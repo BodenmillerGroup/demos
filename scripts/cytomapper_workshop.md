@@ -18,32 +18,87 @@ R](https://www.r-project.org/) and install the `cytomapper` package via:
 For convenience, please open the provided `cytomapper_demos.Rproj` file.
 This will correctly set the working directory.
 
+For complete instructions on how to use the `cytomapper` package, please
+refer to the [official
+vignette](https://bioconductor.org/packages/release/bioc/vignettes/cytomapper/inst/doc/cytomapper.html).
+
 ## Reading in example data
 
 In the first instance, we will read in the example data provided in this
 repository. To read in images, the `cytomapper` package provides the
-`loadImages` function.
+`loadImages` function. The cell-specific mean ion counts and metadata
+are stored in form of a
+[SingleCellExperiment](https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html)
+object.
 
     library(cytomapper)
 
     # Read in multi-channel images
-    images <- loadImages("../data/images/", pattern = ".tiff")
+    (images <- loadImages("../data/images/", pattern = ".tiff"))
+
+    ## CytoImageList containing 3 image(s)
+    ## names(3): E30_a0_full_clean G23_a0_full_clean J01_a0_full_clean 
+    ## Each image contains 38 channel(s)
 
     # Read in masks
-    masks <- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE)
+    (masks <- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE))
+
+    ## CytoImageList containing 3 image(s)
+    ## names(3): E30_a0_full_mask G23_a0_full_mask J01_a0_full_mask 
+    ## Each image contains 1 channel
 
     # Read in single-cell data
-    sce <- readRDS("../data/sce.rds")
+    (sce <- readRDS("../data/sce.rds"))
 
-## Add needed metadata
+    ## class: SingleCellExperiment 
+    ## dim: 38 5819 
+    ## metadata(0):
+    ## assays(2): counts exprs
+    ## rownames(38): H3 SMA ... Ir191 Ir193
+    ## rowData names(15): TubeNb MetalTag ... miCAT2 miCAT
+    ## colnames(5819): E30_1 E30_2 ... J01_2173 J01_2174
+    ## colData names(26): slide id ... Ethnicity BMI
+    ## reducedDimNames(0):
+    ## mainExpName: NULL
+    ## altExpNames(0):
+
+Here, mean ion counts are stored in `counts(sce)` and cell-associated
+metadata are stored in `colData(sce)`.
+
+## Add image metadata
+
+To easily select markers for display, the `channelNames` of the
+multi-channel image object needs to be set. Furthermore, to match
+segmentation masks with multi-channel images, image-level metadata needs
+to be added.
 
     # Add channel names
     channelNames(images) <- rownames(sce)
 
     # Add image name to metadata
-    mcols(images) <- mcols(masks) <- DataFrame(ImageName = c("E30", "G23", "J01"))
+    (mcols(images) <- mcols(masks) <- DataFrame(ImageName = c("E30", "G23", "J01")))
+
+    ## DataFrame with 3 rows and 1 column
+    ##     ImageName
+    ##   <character>
+    ## 1         E30
+    ## 2         G23
+    ## 3         J01
 
 ## Visualize multi-channel images
+
+In the first instance, we can use `cytomapper` to visualize pixel
+intensities of multi-channel images. The `plotPixels` function takes at
+least the `images` object storing multi-channel images. Via the
+`colour_by` parameter, up to six channels can be selected for display.
+The `colour` parameter specifies the range of the colour palette used to
+display the individual channels. Background, contrast and alpha of each
+channel can be set via the `bcg` parameter. Visual appearance of the
+image title can be adjusted via setting `image_title` and the scale bar
+can be set via the `scale_bar` parameter.
+
+Here, we can display the markers pro-insulin (PIN, beta cells), CD4
+(helper T cells) and CD8a (cytotoxic T cells).
 
     plotPixels(image = images,
                colour_by = c("PIN", "CD4", "CD8a"), 
@@ -62,6 +117,21 @@ repository. To read in images, the `cytomapper` package provides the
 ![](cytomapper_workshop_files/figure-markdown_strict/unnamed-chunk-2-1.png)
 
 ## Visualize segmented cells
+
+By incorporating information stored in the `SingleCellExperiment`
+object, cell-specific metadata can be displayed on the segmentation
+masks. Here, each cell is defined as a set of pixels with the same
+integer. The `SingleCellExperiment` object must contain an entry storing
+these integer ids (here the entry can be accessed via
+`colData(sce)$CellNumber`). Furthermore, `colData(sce)$ImageName` stores
+the name of the image to which each cell belongs. This parameter is
+needed to map each cell to its associated segmentation mask.
+
+Here, we subset the `SingleCellExperiment` object to only contain islet
+cells (`alpha`, `beta` and `delta`) and helper T cells (`Th`) and
+cytotoxic T cells (`Tc`). In that way, only the selected cells are
+displayed. All other cells are coloured using the colour specified via
+the `missing_colour` parameter.
 
     cur_sce <- sce[,sce$CellType %in% c("beta", "alpha", "delta", "Tc", "Th")]
 
@@ -83,6 +153,11 @@ repository. To read in images, the `cytomapper` package provides the
 ![](cytomapper_workshop_files/figure-markdown_strict/unnamed-chunk-3-1.png)
 
 ## Outline cells on images
+
+In the final step, we can combine the multi-channel `images`, the
+segmentation `masks` and the single-cell data contained in the
+`SingleCellExperiment` object to outline the selected cells on top of
+the composite images.
 
     plotPixels(image = images,
                object = cur_sce,
@@ -107,6 +182,10 @@ repository. To read in images, the `cytomapper` package provides the
 ![](cytomapper_workshop_files/figure-markdown_strict/unnamed-chunk-4-1.png)
 
 ## Gate cells on images
+
+Finally, the `cytomapperShiny` function can be used to gate cells based
+on their expression values. Gates cells are shown in form of outlines on
+the images.
 
     if (interactive()) {
         cytomapperShiny(sce, mask = masks, image = images, 

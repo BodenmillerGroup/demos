@@ -9,4 +9,8 @@ To test the full functionality of the `cytomapper` package, three components are
 
 * `sce.rds`: contains an single R object in form of a `SingleCellExperiment`. This data class contains all cells corresponding to the above images.
 
+This dataset is a small subset of pancreatic islets acquired in the following publication:
+
+[A Map of Human Type 1 Diabetes Progression by Imaging Mass Cytometry](https://www.sciencedirect.com/science/article/pii/S1550413118306910)
+
 
