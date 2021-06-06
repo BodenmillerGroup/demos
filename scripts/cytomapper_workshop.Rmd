@@ -1,0 +1,135 @@
+---
+title: "Example script to highlight the usage of the `cytomapper` package"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output:     
+    md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script serves as an example to highlight the usage of the [cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html) R/Bioconductor package.
+It was written for the [Indiana O’Brien Center Microscopy Workshop](http://static.medicine.iupui.edu/obrien/2021Schedule.pdf)
+in June 2021.
+
+## Prerequisites
+
+To use this script, first you will need to [install R](https://www.r-project.org/) and install the `cytomapper` package via:
+
+```{r install-cytomapper, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("cytomapper")
+```
+
+For convenience, please open the provided `cytomapper_demos.Rproj` file.
+This will correctly set the working directory.
+
+## Reading in example data
+
+In the first instance, we will read in the example data provided in this repository.
+To read in images, the `cytomapper` package provides the `loadImages` function.
+
+```{r read-in-data, message=FALSE}
+library(cytomapper)
+
+# Read in multi-channel images
+images <- loadImages("../data/images/", pattern = ".tiff")
+
+# Read in masks
+masks <- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE)
+
+# Read in single-cell data
+sce <- readRDS("../data/sce.rds")
+```
+
+## Add needed metadata
+
+```{r}
+# Add channel names
+channelNames(images) <- rownames(sce)
+
+# Add image name to metadata
+mcols(images) <- mcols(masks) <- DataFrame(ImageName = c("E30", "G23", "J01"))
+```
+
+## Visualize multi-channel images
+
+```{r}
+plotPixels(image = images,
+           colour_by = c("PIN", "CD4", "CD8a"), 
+           colour = list(PIN = c("black", "yellow"),
+                         CD4 = c("black", "blue"),
+                         CD8a = c("black", "red")),
+           bcg = list(PIN = c(0, 10, 1),
+                      CD4 = c(0, 8, 1),
+                      CD8a = c(0, 10, 1)),
+           image_title = list(text = c("Non-diabetic",
+                                       "Recent onset T1D",
+                                       "Long duration T1D")),
+           scale_bar = list(length = 100,
+                            label = expression("100 " ~ mu * "m")))
+```
+
+## Visualize segmented cells
+
+```{r}
+cur_sce <- sce[,sce$CellType %in% c("beta", "alpha", "delta", "Tc", "Th")]
+
+plotCells(mask = masks,
+          object = cur_sce,
+          cell_id = "CellNumber",
+          img_id = "ImageName",
+          colour_by = "CellType",
+          image_title = list(text = c("Non-diabetic",
+                                      "Recent onset T1D",
+                                      "Long duration T1D"),
+                             colour = "black"),
+          scale_bar = list(length = 100,
+                           label = expression("100 " ~ mu * "m"),
+                           colour = "black"),
+          missing_colour = "white",
+          background_colour = "gray")
+```
+
+## Outline cells on images
+
+```{r}
+plotPixels(image = images,
+           object = cur_sce,
+           mask = masks,
+           cell_id = "CellNumber",
+           img_id = "ImageName",
+           colour_by = c("PIN", "CD4", "CD8a"), 
+           outline_by = "CellType",
+           colour = list(PIN = c("black", "yellow"),
+                         CD4 = c("black", "blue"),
+                         CD8a = c("black", "red")),
+           bcg = list(PIN = c(0, 10, 1),
+                      CD4 = c(0, 8, 1),
+                      CD8a = c(0, 10, 1)),
+           image_title = list(text = c("Non-diabetic",
+                                       "Recent onset T1D",
+                                       "Long duration T1D")),
+           scale_bar = list(length = 100,
+                            label = expression("100 " ~ mu * "m")),
+           thick = TRUE)
+```
+
+## Gate cells on images
+
+```{r}
+if (interactive()) {
+    cytomapperShiny(sce, mask = masks, image = images, 
+                    cell_id = "CellNumber", img_id = "ImageName")
+}
+```
+
+## Session info
+
+```{r sessionInfo}
+sessionInfo()
+```
