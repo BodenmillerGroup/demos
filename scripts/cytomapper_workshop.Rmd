@@ -50,6 +50,9 @@ library(cytomapper)
 
 # Read in single-cell data
 (sce <- readRDS("../data/sce.rds"))
+
+# Display the cell-specific metadata
+colData(sce)
 ```
 
 Here, mean ion counts are stored in `counts(sce)` and cell-associated metadata

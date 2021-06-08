@@ -62,6 +62,76 @@ object.
     ## mainExpName: NULL
     ## altExpNames(0):
 
+    # Display the cell-specific metadata
+    colData(sce)
+
+    ## DataFrame with 5819 rows and 26 columns
+    ##                slide          id ImageNumber CellNumber     Pos_X     Pos_Y
+    ##          <character> <character>   <integer>  <integer> <numeric> <numeric>
+    ## E30_1              E       E30_1         166          1   171.375   0.62500
+    ## E30_2              E       E30_2         166          2   149.400   1.60000
+    ## E30_3              E       E30_3         166          3     6.400   3.36471
+    ## E30_4              E       E30_4         166          4   220.756   2.85366
+    ## E30_5              E       E30_5         166          5   189.523   4.95455
+    ## ...              ...         ...         ...        ...       ...       ...
+    ## J01_2170           J    J01_2170         286       2170   435.950   453.050
+    ## J01_2171           J    J01_2171         286       2171   456.469   452.688
+    ## J01_2172           J    J01_2172         286       2172   340.643   453.643
+    ## J01_2173           J    J01_2173         286       2173    19.900   454.500
+    ## J01_2174           J    J01_2174         286       2174    43.250   454.625
+    ##          ParentIslet ClosestIslet      Area NbNeighbours          ImageFullName
+    ##            <integer>    <integer> <integer>    <integer>            <character>
+    ## E30_1              0            1         8            2 E30_a0_full_clean.tiff
+    ## E30_2              0            1         5            2 E30_a0_full_clean.tiff
+    ## E30_3              0            1        85            3 E30_a0_full_clean.tiff
+    ## E30_4              0            1        41            4 E30_a0_full_clean.tiff
+    ## E30_5              0            1        44            5 E30_a0_full_clean.tiff
+    ## ...              ...          ...       ...          ...                    ...
+    ## J01_2170           0            1        40            4 J01_a0_full_clean.tiff
+    ## J01_2171           0            1        64            3 J01_a0_full_clean.tiff
+    ## J01_2172           0            1        42            3 J01_a0_full_clean.tiff
+    ## J01_2173           0            1        10            3 J01_a0_full_clean.tiff
+    ## J01_2174           0            1        16            2 J01_a0_full_clean.tiff
+    ##              width    height   ImageName     CellCat    CellType      case
+    ##          <integer> <integer> <character> <character> <character> <integer>
+    ## E30_1          390       452         E30    exocrine      ductal      6126
+    ## E30_2          390       452         E30      immune  macrophage      6126
+    ## E30_3          390       452         E30    exocrine      acinar      6126
+    ## E30_4          390       452         E30    exocrine      acinar      6126
+    ## E30_5          390       452         E30    exocrine      ductal      6126
+    ## ...            ...       ...         ...         ...         ...       ...
+    ## J01_2170       463       456         J01    exocrine      ductal      6180
+    ## J01_2171       463       456         J01    exocrine      acinar      6180
+    ## J01_2172       463       456         J01    exocrine      acinar      6180
+    ## J01_2173       463       456         J01    exocrine      acinar      6180
+    ## J01_2174       463       456         J01    exocrine      acinar      6180
+    ##                 part     group         stage  duration  Aab.status       Age
+    ##          <character> <integer>   <character> <numeric> <character> <numeric>
+    ## E30_1           Tail         1  Non-diabetic        NA    Negative      25.2
+    ## E30_2           Tail         1  Non-diabetic        NA    Negative      25.2
+    ## E30_3           Tail         1  Non-diabetic        NA    Negative      25.2
+    ## E30_4           Tail         1  Non-diabetic        NA    Negative      25.2
+    ## E30_5           Tail         1  Non-diabetic        NA    Negative      25.2
+    ## ...              ...       ...           ...       ...         ...       ...
+    ## J01_2170        Tail         2 Long-duration        11    Positive        27
+    ## J01_2171        Tail         2 Long-duration        11    Positive        27
+    ## J01_2172        Tail         2 Long-duration        11    Positive        27
+    ## J01_2173        Tail         2 Long-duration        11    Positive        27
+    ## J01_2174        Tail         2 Long-duration        11    Positive        27
+    ##               Gender   Ethnicity       BMI
+    ##          <character> <character> <numeric>
+    ## E30_1              M   Caucasian      25.1
+    ## E30_2              M   Caucasian      25.1
+    ## E30_3              M   Caucasian      25.1
+    ## E30_4              M   Caucasian      25.1
+    ## E30_5              M   Caucasian      25.1
+    ## ...              ...         ...       ...
+    ## J01_2170           M   Caucasian      25.9
+    ## J01_2171           M   Caucasian      25.9
+    ## J01_2172           M   Caucasian      25.9
+    ## J01_2173           M   Caucasian      25.9
+    ## J01_2174           M   Caucasian      25.9
+
 Here, mean ion counts are stored in `counts(sce)` and cell-associated
 metadata are stored in `colData(sce)`.
 
