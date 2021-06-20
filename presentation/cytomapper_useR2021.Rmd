@@ -15,29 +15,180 @@ output:
       highlightLines: true
       countIncrementalSlides: false
 ---
-
+background-image: url(imgs/cytomapper_sticker.png)
+background-size: 150px
+background-position: 95% 10%
+  
 ```{r setup, include=FALSE}
 options(htmltools.dir.version = FALSE)
 ```
 
 ## The `cytomapper` R/Bioconductor package
 
----
+Contains three broad functionalities:
 
-## Installation
+* Visualization of pixel-intensities as composites of up to six channels (`plotPixels`)
+
+* Visualization of cell-specific features on segmentation masks (`plotCells`)
+
+* Interactive gating of cells and visualization of gated cells on images (`cytomapperShiny`)
+
+### Installation
+
+Via Bioconductor (release version):
+
+```{r, bioconductor-install, eval=FALSE, fig.alt=""}
+BiocManager::install("cytomapper")
+```
+
+or from Github (development version):
+
+```{r, github-install, eval=FALSE, , fig.alt=""}
+remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
+```
+
+---
+background-image: url(imgs/Overview.png)
+background-size: 600px
+background-position: 75% 50%
+
+## Data structure
+
+<div id="left">
+
+* `cytomapper` uses a `SingleCellExperiment` data container to store cell-specific metadata and intensity features
+
+* the new class `cytomapper::CytoImageList` stores individual `EBImage::Image` objects in form of a `S4Vectors::SimpleList` container
+
+* Visualization of cell-specific metadata is possible by linking a `CytoImageList` and `SingleCellExperiment` object via the function parameters `img_id` and `cell_id`
+
+</div>
+
+<div class="my-footer"><a href="https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html">https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html</a></div> 
 
 ---
 
 ## Reading in the data
 
+```{r, reading-in-data, message=FALSE, fig.alt=""}
+library(cytomapper)
+
+# Read in 32-bit multi-channel images
+(images <- loadImages("../data/images/", pattern = ".tiff"))
+
+# Read in 16-bit unsigned integer segmentation masks
+(masks <- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE))
+
+# Read in single-cell data
+(sce <- readRDS("../data/sce.rds"))
+```
+
 ---
 
 ## Formatting the data
+
+```{r, format-the-data, message=FALSE, fig.alt=""}
+# Add channel names
+channelNames(images) <- rownames(sce)
+
+# Add image name to metadata
+(mcols(images) <- mcols(masks) <- DataFrame(ImageName = c("E30", "G23", "J01")))
+```
 
 ---
 
 ## Measuring object features
 
+```{r, measure-features}
+sce_2 <- measureObjects(mask = masks, image = images, img_id = "ImageName")
+sce_2
+```
+
 ---
+
+## Visualize multi-channel images
+
+```{r}
+plotPixels(image = images,
+           colour_by = c("PIN", "CD4", "CD8a"), 
+           colour = list(PIN = c("black", "yellow"),
+                         CD4 = c("black", "blue"),
+                         CD8a = c("black", "red")),
+           bcg = list(PIN = c(0, 10, 1),
+                      CD4 = c(0, 8, 1),
+                      CD8a = c(0, 10, 1)),
+           image_title = list(text = c("Non-diabetic",
+                                       "Recent onset T1D",
+                                       "Long duration T1D")),
+           scale_bar = list(length = 100,
+                            label = expression("100 " ~ mu * "m")))
+```
+
+---
+
+## Visualize segmented cells
+
+```{r}
+cur_sce <- sce[,sce$CellType %in% c("beta", "alpha", "delta", "Tc", "Th")]
+plotCells(mask = masks,
+          object = cur_sce,
+          cell_id = "CellNumber",
+          img_id = "ImageName",
+          colour_by = "CellType",
+          image_title = list(text = c("Non-diabetic",
+                                      "Recent onset T1D",
+                                      "Long duration T1D"),
+                             colour = "black"),
+          scale_bar = list(length = 100,
+                           label = expression("100 " ~ mu * "m"),
+                           colour = "black"),
+          missing_colour = "white",
+          background_colour = "gray")
+```
+
+---
+
+## Outline cells on images
+
+```{r}
+plotPixels(image = images,
+           object = cur_sce,
+           mask = masks,
+           cell_id = "CellNumber",
+           img_id = "ImageName",
+           colour_by = c("PIN", "CD4", "CD8a"), 
+           outline_by = "CellType",
+           colour = list(PIN = c("black", "yellow"),
+                         CD4 = c("black", "blue"),
+                         CD8a = c("black", "red")),
+           bcg = list(PIN = c(0, 10, 1),
+                      CD4 = c(0, 8, 1),
+                      CD8a = c(0, 10, 1)),
+           image_title = list(text = c("Non-diabetic",
+                                       "Recent onset T1D",
+                                       "Long duration T1D")),
+           scale_bar = list(length = 100,
+                            label = expression("100 " ~ mu * "m")),
+           thick = TRUE)
+```
+
+---
+
+## Acknowledgements and useful links
+
+---
+
+## Session Info
+
+
+```{r, sessionInfo}
+sessionInfo(package = "cytomapper")
+```
+
+---
+
+
+
+
 
 

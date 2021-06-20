@@ -22,28 +22,320 @@ class: center, middle, inverse, title-slide
 
 ---
 
-
+background-image: url(imgs/cytomapper_sticker.png)
+background-size: 150px
+background-position: 95% 10%
+  
 
 
 ## The `cytomapper` R/Bioconductor package
 
----
+Contains three broad functionalities:
 
-## Installation
+* Visualization of pixel-intensities as composites of up to six channels (`plotPixels`)
+
+* Visualization of cell-specific features on segmentation masks (`plotCells`)
+
+* Interactive gating of cells and visualization of gated cells on images (`cytomapperShiny`)
+
+### Installation
+
+Via Bioconductor (release version):
+
+
+```r
+BiocManager::install("cytomapper")
+```
+
+or from Github (development version):
+
+
+```r
+remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
+```
+
+---
+background-image: url(imgs/Overview.png)
+background-size: 600px
+background-position: 75% 50%
+
+## Data structure
+
+&lt;div id="left"&gt;
+
+* `cytomapper` uses a `SingleCellExperiment` data container to store cell-specific metadata and intensity features
+
+* the new class `cytomapper::CytoImageList` stores individual `EBImage::Image` objects in form of a `S4Vectors::SimpleList` container
+
+* Visualization of cell-specific metadata is possible by linking a `CytoImageList` and `SingleCellExperiment` object via the function parameters `img_id` and `cell_id`
+
+&lt;/div&gt;
+
+&lt;div class="my-footer"&gt;&lt;a href="https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html"&gt;https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html&lt;/a&gt;&lt;/div&gt; 
 
 ---
 
 ## Reading in the data
 
+
+```r
+library(cytomapper)
+
+# Read in 32-bit multi-channel images
+(images &lt;- loadImages("../data/images/", pattern = ".tiff"))
+```
+
+```
+## CytoImageList containing 3 image(s)
+## names(3): E30_a0_full_clean G23_a0_full_clean J01_a0_full_clean 
+## Each image contains 38 channel(s)
+```
+
+```r
+# Read in 16-bit unsigned integer segmentation masks
+(masks &lt;- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE))
+```
+
+```
+## CytoImageList containing 3 image(s)
+## names(3): E30_a0_full_mask G23_a0_full_mask J01_a0_full_mask 
+## Each image contains 1 channel
+```
+
+```r
+# Read in single-cell data
+(sce &lt;- readRDS("../data/sce.rds"))
+```
+
+```
+## class: SingleCellExperiment 
+## dim: 38 5819 
+## metadata(0):
+## assays(2): counts exprs
+## rownames(38): H3 SMA ... Ir191 Ir193
+## rowData names(15): TubeNb MetalTag ... miCAT2 miCAT
+## colnames(5819): E30_1 E30_2 ... J01_2173 J01_2174
+## colData names(26): slide id ... Ethnicity BMI
+## reducedDimNames(0):
+## mainExpName: NULL
+## altExpNames(0):
+```
+
 ---
 
 ## Formatting the data
+
+
+```r
+# Add channel names
+channelNames(images) &lt;- rownames(sce)
+
+# Add image name to metadata
+(mcols(images) &lt;- mcols(masks) &lt;- DataFrame(ImageName = c("E30", "G23", "J01")))
+```
+
+```
+## DataFrame with 3 rows and 1 column
+##     ImageName
+##   &lt;character&gt;
+## 1         E30
+## 2         G23
+## 3         J01
+```
 
 ---
 
 ## Measuring object features
 
+
+```r
+sce_2 &lt;- measureObjects(mask = masks, image = images, img_id = "ImageName")
+sce_2
+```
+
+```
+## class: SingleCellExperiment 
+## dim: 38 5819 
+## metadata(0):
+## assays(1): counts
+## rownames(38): H3 SMA ... Ir191 Ir193
+## rowData names(0):
+## colnames: NULL
+## colData names(8): ImageName object_id ... m.majoraxis m.eccentricity
+## reducedDimNames(0):
+## mainExpName: NULL
+## altExpNames(0):
+```
+
 ---
+
+## Visualize multi-channel images
+
+
+```r
+plotPixels(image = images,
+           colour_by = c("PIN", "CD4", "CD8a"), 
+           colour = list(PIN = c("black", "yellow"),
+                         CD4 = c("black", "blue"),
+                         CD8a = c("black", "red")),
+           bcg = list(PIN = c(0, 10, 1),
+                      CD4 = c(0, 8, 1),
+                      CD8a = c(0, 10, 1)),
+           image_title = list(text = c("Non-diabetic",
+                                       "Recent onset T1D",
+                                       "Long duration T1D")),
+           scale_bar = list(length = 100,
+                            label = expression("100 " ~ mu * "m")))
+```
+
+![](cytomapper_useR2021_files/figure-html/unnamed-chunk-1-1.png)&lt;!-- --&gt;
+
+---
+
+## Visualize segmented cells
+
+
+```r
+cur_sce &lt;- sce[,sce$CellType %in% c("beta", "alpha", "delta", "Tc", "Th")]
+plotCells(mask = masks,
+          object = cur_sce,
+          cell_id = "CellNumber",
+          img_id = "ImageName",
+          colour_by = "CellType",
+          image_title = list(text = c("Non-diabetic",
+                                      "Recent onset T1D",
+                                      "Long duration T1D"),
+                             colour = "black"),
+          scale_bar = list(length = 100,
+                           label = expression("100 " ~ mu * "m"),
+                           colour = "black"),
+          missing_colour = "white",
+          background_colour = "gray")
+```
+
+![](cytomapper_useR2021_files/figure-html/unnamed-chunk-2-1.png)&lt;!-- --&gt;
+
+---
+
+## Outline cells on images
+
+
+```r
+plotPixels(image = images,
+           object = cur_sce,
+           mask = masks,
+           cell_id = "CellNumber",
+           img_id = "ImageName",
+           colour_by = c("PIN", "CD4", "CD8a"), 
+           outline_by = "CellType",
+           colour = list(PIN = c("black", "yellow"),
+                         CD4 = c("black", "blue"),
+                         CD8a = c("black", "red")),
+           bcg = list(PIN = c(0, 10, 1),
+                      CD4 = c(0, 8, 1),
+                      CD8a = c(0, 10, 1)),
+           image_title = list(text = c("Non-diabetic",
+                                       "Recent onset T1D",
+                                       "Long duration T1D")),
+           scale_bar = list(length = 100,
+                            label = expression("100 " ~ mu * "m")),
+           thick = TRUE)
+```
+
+![](cytomapper_useR2021_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+---
+
+## Acknowledgements and useful links
+
+---
+
+## Session Info
+
+
+
+```r
+sessionInfo(package = "cytomapper")
+```
+
+```
+## R version 4.1.0 (2021-05-18)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## character(0)
+## 
+## other attached packages:
+## [1] cytomapper_1.4.1
+## 
+## loaded via a namespace (and not attached):
+##   [1] utils_4.1.0                 bitops_1.0-7               
+##   [3] matrixStats_0.59.0          EBImage_4.34.0             
+##   [5] RColorBrewer_1.1-2          GenomeInfoDb_1.28.0        
+##   [7] tools_4.1.0                 bslib_0.2.5.1              
+##   [9] utf8_1.2.1                  R6_2.5.0                   
+##  [11] svgPanZoom_0.3.4            HDF5Array_1.20.0           
+##  [13] vipor_0.4.5                 DBI_1.1.1                  
+##  [15] BiocGenerics_0.38.0         colorspace_2.0-1           
+##  [17] rhdf5filters_1.4.0          raster_3.4-13              
+##  [19] sp_1.4-5                    gridExtra_2.3              
+##  [21] tidyselect_1.1.1            compiler_4.1.0             
+##  [23] Biobase_2.52.0              datasets_4.1.0             
+##  [25] DelayedArray_0.18.0         base_4.1.0                 
+##  [27] sass_0.4.0                  scales_1.1.1               
+##  [29] systemfonts_1.0.2           stringr_1.4.0              
+##  [31] digest_0.6.27               tiff_0.1-8                 
+##  [33] fftwtools_0.9-11            rmarkdown_2.9              
+##  [35] svglite_2.0.0               XVector_0.32.0             
+##  [37] jpeg_0.1-8.1                pkgconfig_2.0.3            
+##  [39] htmltools_0.5.1.1           MatrixGenerics_1.4.0       
+##  [41] highr_0.9                   fastmap_1.1.0              
+##  [43] grDevices_4.1.0             htmlwidgets_1.5.3          
+##  [45] rlang_0.4.11                xaringan_0.21.1            
+##  [47] shiny_1.6.0                 jquerylib_0.1.4            
+##  [49] generics_0.1.0              jsonlite_1.7.2             
+##  [51] BiocParallel_1.26.0         dplyr_1.0.6                
+##  [53] RCurl_1.98-1.3              magrittr_2.0.1             
+##  [55] GenomeInfoDbData_1.2.6      Matrix_1.3-3               
+##  [57] Rcpp_1.0.6                  ggbeeswarm_0.6.0           
+##  [59] munsell_0.5.0               S4Vectors_0.30.0           
+##  [61] Rhdf5lib_1.14.1             fansi_0.5.0                
+##  [63] abind_1.4-5                 viridis_0.6.1              
+##  [65] lifecycle_1.0.0             stringi_1.6.2              
+##  [67] yaml_2.2.1                  SummarizedExperiment_1.22.0
+##  [69] zlibbioc_1.38.0             rhdf5_2.36.0               
+##  [71] grid_4.1.0                  parallel_4.1.0             
+##  [73] promises_1.2.0.1            shinydashboard_0.7.1       
+##  [75] crayon_1.4.1                methods_4.1.0              
+##  [77] lattice_0.20-44             locfit_1.5-9.4             
+##  [79] knitr_1.33                  pillar_1.6.1               
+##  [81] GenomicRanges_1.44.0        codetools_0.2-18           
+##  [83] stats4_4.1.0                glue_1.4.2                 
+##  [85] evaluate_0.14               png_0.1-7                  
+##  [87] vctrs_0.3.8                 httpuv_1.6.1               
+##  [89] graphics_4.1.0              gtable_0.3.0               
+##  [91] purrr_0.3.4                 assertthat_0.2.1           
+##  [93] ggplot2_3.3.4               xfun_0.24                  
+##  [95] mime_0.10                   xtable_1.8-4               
+##  [97] later_1.2.0                 viridisLite_0.4.0          
+##  [99] SingleCellExperiment_1.14.1 tibble_3.1.2               
+## [101] stats_4.1.0                 beeswarm_0.4.0             
+## [103] IRanges_2.26.0              ellipsis_0.3.2
+```
+
+---
+
+
+
+
 
 
     </textarea>
