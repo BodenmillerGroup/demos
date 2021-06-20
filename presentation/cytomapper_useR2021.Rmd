@@ -1,0 +1,27 @@
+---
+title: "Visualization of highly-multiplexed imaging data with `cytomapper`"
+author: "Nils Eling"
+institute: 
+    - "Department of Quantitative Biomedicine, University of Zurich"
+    - "Institute for Molecular Health Sciences, ETH Zurich"
+date: "09/07/2021"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: ["default", "custom.css", "useR-fonts"]
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+background-image: "imgs/cytomapper_sticker.png"
+background-size: 100px
+background-position: 90% 8%
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+## Installation
+
+

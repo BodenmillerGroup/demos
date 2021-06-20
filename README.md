@@ -10,8 +10,8 @@ The following demos are gathered here:
 ### Indiana O’Brien Center Microscopy Workshop
 
 The [Indiana O’Brien Center Microscopy Workshop](http://static.medicine.iupui.edu/obrien/2021Schedule.pdf) was hosted between 7th and 10th June 2021.
-All resources for the demonstration can be found [here](https://github.com/BodenmillerGroup/cytomapper_demos).
-Please follow the [analysis script](https://github.com/BodenmillerGroup/cytomapper_demos/blob/main/scripts/cytomapper_workshop.md) to reproduce the presented demo.
+All resources for the demonstration can be found [here](https://github.com/BodenmillerGroup/cytomapper_demos/tree/IndianaOBrienCentre).
+Please follow the [analysis script](https://github.com/BodenmillerGroup/cytomapper_demos/blob/IndianaOBrienCentre/scripts/cytomapper_workshop.Rmd) to reproduce the presented demo.
 
 ## Getting help
 

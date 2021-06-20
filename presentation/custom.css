@@ -1,0 +1,23 @@
+.title-slide {
+  background-color: white;
+  background-image: "imgs/cytomapper_sticker.png";
+  background-size: 100px;
+  background-position: 90% 8%;
+}
+
+.title-slide h2 {
+  color: black;
+  text-shadow: none;
+}
+
+.title-slide h1 {
+  color: black;
+  text-shadow: none;
+  font-size: 30pt;
+}
+
+.title-slide h3 {
+  color: black;
+  text-shadow: none;
+  font-size: 15pt;
+}
