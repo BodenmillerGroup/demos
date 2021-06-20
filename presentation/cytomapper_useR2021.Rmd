@@ -10,18 +10,34 @@ output:
     lib_dir: libs
     css: ["default", "custom.css", "useR-fonts"]
     nature:
+      ratio: '16:9'
       highlightStyle: github
       highlightLines: true
       countIncrementalSlides: false
 ---
-background-image: "imgs/cytomapper_sticker.png"
-background-size: 100px
-background-position: 90% 8%
 
 ```{r setup, include=FALSE}
 options(htmltools.dir.version = FALSE)
 ```
 
+## The `cytomapper` R/Bioconductor package
+
+---
+
 ## Installation
+
+---
+
+## Reading in the data
+
+---
+
+## Formatting the data
+
+---
+
+## Measuring object features
+
+---
 
 

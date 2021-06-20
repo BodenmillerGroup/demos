@@ -1,8 +1,8 @@
 .title-slide {
   background-color: white;
-  background-image: "imgs/cytomapper_sticker.png";
-  background-size: 100px;
-  background-position: 90% 8%;
+  background-image: url(imgs/user-logo-color.png);
+  background-size: 150px;
+  background-position: 50% 10%;
 }
 
 .title-slide h2 {
