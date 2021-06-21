@@ -9,7 +9,8 @@ The following demos are gathered here:
 
 ### useR! 2021 presentation
 
-
+The `cytomapper` demonstration as presented at the [useR! 2021 conference](https://user2021.r-project.org/) can be found [here](https://github.com/BodenmillerGroup/cytomapper_demos/blob/main/docs/index.Rmd).
+The presentation is also hosted on [https://bodenmillergroup.github.io/cytomapper_demos](https://bodenmillergroup.github.io/cytomapper_demos). 
 
 ### Indiana O’Brien Center Microscopy Workshop
 
