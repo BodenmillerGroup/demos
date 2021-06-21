@@ -38,13 +38,13 @@ Contains three broad functionalities:
 
 Via Bioconductor (release version):
 
-```{r, bioconductor-install, eval=FALSE, fig.alt=""}
+```{r, bioconductor-install, eval=FALSE, fig.alt="The release version of cytomapper can be installed using BiocManager::install"}
 BiocManager::install("cytomapper")
 ```
 
 or from Github (development version):
 
-```{r, github-install, eval=FALSE, , fig.alt=""}
+```{r, github-install, eval=FALSE, fig.alt="The development version of cytomapper can be installed using remotes::install_github"}
 remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
 ```
 
@@ -64,7 +64,7 @@ remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
 
 .pull-right[
 
-![cytomapper overview figure](imgs/Overview.png)
+![cytomapper overview figure. A) The plotCells function combines a SingleCellExperiment and CytoImageList object to visualize marker expression or cell-specific metadata on segmentation masks. B) The plotPixels function requires a CytoImageList object to visualize the combined expression of up to six markers as composite images](imgs/Overview.png)
 
 ]
 
@@ -78,7 +78,7 @@ remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
 
 The `cytomapper::loadImages` function reads in multi-channel images and segmentation masks into `CytoImageList` objects.
 
-```{r, reading-in-data-1, message=FALSE, fig.alt=""}
+```{r, reading-in-data-1, message=FALSE}
 library(cytomapper)
 
 # Read in 32-bit multi-channel images
@@ -90,18 +90,26 @@ library(cytomapper)
 
 <div class="my-footer" style="height=50px;"><a href="https://github.com/BodenmillerGroup/cytomapper_demos">https://github.com/BodenmillerGroup/cytomapper_demos</a></div> 
 
+???
+
+The loadImages function reads in .tiff, .png or .jpg images and formats them into a CytoImageList container. The as.is parameter needs to be set to TRUE to correctly read in 16-bit unsigned integer images. The multi-channel images and segmentation masks are provided in the BodenmillerGroup/cytomapper_demos Github repository.
+
 ---
 
 ## Reading in the single-cell data
 
 Cell-specific metadata and summarized intensity features are stored in form of a `SingleCellExperiment` object.
 
-```{r, reading-in-data-2, message=FALSE, fig.alt="", fig.pos="r"}
+```{r, reading-in-data-2, message=FALSE}
 # Read in single-cell data
 (sce <- readRDS("../data/sce.rds"))
 ```
 
 <div class="my-footer" style="height=50px;"><a href="https://github.com/BodenmillerGroup/cytomapper_demos">https://github.com/BodenmillerGroup/cytomapper_demos</a></div> 
+
+???
+
+In the BodenmillerGroup/cytomapper_demos Github repository, you can also find an .rds file containing a SingleCellExperiment object that holds the mean channel intensities per cell and all associated metadata (e.g. cell-type label).
 
 ---
 
@@ -109,13 +117,17 @@ Cell-specific metadata and summarized intensity features are stored in form of a
 
 Prior to visualization, the channel names and image-specific metadata should be set.
 
-```{r, format-the-data, message=FALSE, fig.alt=""}
+```{r, format-the-data, message=FALSE}
 # Add channel names
 channelNames(images) <- rownames(sce)
 
 # Add image name to metadata
 (mcols(images) <- mcols(masks) <- DataFrame(ImageName = c("E30", "G23", "J01")))
 ```
+
+???
+
+We will need to set the channel names of the images via the channelNames getter/setter function. The channel order here is the same as the row order of the SingleCellExperiment object. We will also need to synchronise the image IDs across the multi-channel images and segmentation masks by storing a DataFrame in the elementMetadata slot of the CytoImageList object.
 
 ---
 
@@ -127,6 +139,10 @@ The `cytomapper::measureObjects` function computes morphological (e.g. cell shap
 sce_2 <- measureObjects(mask = masks, image = images, img_id = "ImageName")
 sce_2
 ```
+
+???
+
+The pixel intensities per cell can be summarized in different ways (e.g. as quantiles). Furthermore, parallelization is possible by setting `BPPARAM = bpparam()`.
 
 ---
 

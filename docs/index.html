@@ -70,7 +70,7 @@ remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
 
 .pull-right[
 
-![cytomapper overview figure](imgs/Overview.png)
+![cytomapper overview figure. A) The plotCells function combines a SingleCellExperiment and CytoImageList object to visualize marker expression or cell-specific metadata on segmentation masks. B) The plotPixels function requires a CytoImageList object to visualize the combined expression of up to six markers as composite images](imgs/Overview.png)
 
 ]
 
@@ -111,6 +111,10 @@ library(cytomapper)
 
 &lt;div class="my-footer" style="height=50px;"&gt;&lt;a href="https://github.com/BodenmillerGroup/cytomapper_demos"&gt;https://github.com/BodenmillerGroup/cytomapper_demos&lt;/a&gt;&lt;/div&gt; 
 
+???
+
+The loadImages function reads in .tiff, .png or .jpg images and formats them into a CytoImageList container. The as.is parameter needs to be set to TRUE to correctly read in 16-bit unsigned integer images. The multi-channel images and segmentation masks are provided in the BodenmillerGroup/cytomapper_demos Github repository.
+
 ---
 
 ## Reading in the single-cell data
@@ -139,6 +143,10 @@ Cell-specific metadata and summarized intensity features are stored in form of a
 
 &lt;div class="my-footer" style="height=50px;"&gt;&lt;a href="https://github.com/BodenmillerGroup/cytomapper_demos"&gt;https://github.com/BodenmillerGroup/cytomapper_demos&lt;/a&gt;&lt;/div&gt; 
 
+???
+
+In the BodenmillerGroup/cytomapper_demos Github repository, you can also find an .rds file containing a SingleCellExperiment object that holds the mean channel intensities per cell and all associated metadata (e.g. cell-type label).
+
 ---
 
 ## Formatting the data
@@ -162,6 +170,10 @@ channelNames(images) &lt;- rownames(sce)
 ## 2         G23
 ## 3         J01
 ```
+
+???
+
+We will need to set the channel names of the images via the channelNames getter/setter function. The channel order here is the same as the row order of the SingleCellExperiment object. We will also need to synchronise the image IDs across the multi-channel images and segmentation masks by storing a DataFrame in the elementMetadata slot of the CytoImageList object.
 
 ---
 
@@ -188,6 +200,10 @@ sce_2
 ## mainExpName: NULL
 ## altExpNames(0):
 ```
+
+???
+
+The pixel intensities per cell can be summarized in different ways (e.g. as quantiles). Furthermore, parallelization is possible by setting `BPPARAM = bpparam()`.
 
 ---
 
