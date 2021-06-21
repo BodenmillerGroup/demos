@@ -55,23 +55,28 @@ remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
 ```
 
 ---
-background-image: url(imgs/Overview.png)
-background-size: 600px
-background-position: 75% 50%
 
 ## Data structure
 
-&lt;div id="left"&gt;
+.pull-left[
 
 * `cytomapper` uses a `SingleCellExperiment` data container to store cell-specific metadata and intensity features
 
 * the new class `cytomapper::CytoImageList` stores individual `EBImage::Image` objects in form of a `S4Vectors::SimpleList` container
 
-* Visualization of cell-specific metadata is possible by linking a `CytoImageList` and `SingleCellExperiment` object via the function parameters `img_id` and `cell_id`
+* visualization of cell-specific metadata is possible by linking a `CytoImageList` and `SingleCellExperiment` object via the function parameters `img_id` and `cell_id`
 
-&lt;/div&gt;
+]
 
-&lt;div class="my-footer"&gt;&lt;a href="https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html"&gt;https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html&lt;/a&gt;&lt;/div&gt; 
+.pull-right[
+
+![cytomapper overview figure](imgs/Overview.png)
+
+]
+
+&lt;div class="my-footer" style="height=100px;"&gt;&lt;a href="https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html"&gt;https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html&lt;/a&gt;&lt;br&gt;
+&lt;a href="https://www.bioconductor.org/packages/release/bioc/html/EBImage.html"&gt;https://www.bioconductor.org/packages/release/bioc/html/EBImage.html&lt;/a&gt;&lt;br&gt;
+&lt;a href="https://www.bioconductor.org/packages/release/bioc/html/S4Vectors.html"&gt;https://www.bioconductor.org/packages/release/bioc/html/S4Vectors.html&lt;/a&gt;&lt;/div&gt; 
 
 ---
 
@@ -149,22 +154,8 @@ channelNames(images) &lt;- rownames(sce)
 
 
 ```r
-sce_2 &lt;- measureObjects(mask = masks, image = images, img_id = "ImageName")
-sce_2
-```
-
-```
-## class: SingleCellExperiment 
-## dim: 38 5819 
-## metadata(0):
-## assays(1): counts
-## rownames(38): H3 SMA ... Ir191 Ir193
-## rowData names(0):
-## colnames: NULL
-## colData names(8): ImageName object_id ... m.majoraxis m.eccentricity
-## reducedDimNames(0):
-## mainExpName: NULL
-## altExpNames(0):
+#sce_2 &lt;- measureObjects(mask = masks, image = images, img_id = "ImageName")
+#sce_2
 ```
 
 ---

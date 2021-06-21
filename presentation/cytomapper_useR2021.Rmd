@@ -48,23 +48,28 @@ remotes::install_github("BodenmillerGroup/cytomapper", build_vignettes = TRUE)
 ```
 
 ---
-background-image: url(imgs/Overview.png)
-background-size: 600px
-background-position: 75% 50%
 
 ## Data structure
 
-<div id="left">
+.pull-left[
 
 * `cytomapper` uses a `SingleCellExperiment` data container to store cell-specific metadata and intensity features
 
 * the new class `cytomapper::CytoImageList` stores individual `EBImage::Image` objects in form of a `S4Vectors::SimpleList` container
 
-* Visualization of cell-specific metadata is possible by linking a `CytoImageList` and `SingleCellExperiment` object via the function parameters `img_id` and `cell_id`
+* visualization of cell-specific metadata is possible by linking a `CytoImageList` and `SingleCellExperiment` object via the function parameters `img_id` and `cell_id`
 
-</div>
+]
 
-<div class="my-footer"><a href="https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html">https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html</a></div> 
+.pull-right[
+
+![cytomapper overview figure](imgs/Overview.png)
+
+]
+
+<div class="my-footer" style="height=100px;"><a href="https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html">https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html</a><br>
+<a href="https://www.bioconductor.org/packages/release/bioc/html/EBImage.html">https://www.bioconductor.org/packages/release/bioc/html/EBImage.html</a><br>
+<a href="https://www.bioconductor.org/packages/release/bioc/html/S4Vectors.html">https://www.bioconductor.org/packages/release/bioc/html/S4Vectors.html</a></div> 
 
 ---
 
@@ -100,8 +105,8 @@ channelNames(images) <- rownames(sce)
 ## Measuring object features
 
 ```{r, measure-features}
-sce_2 <- measureObjects(mask = masks, image = images, img_id = "ImageName")
-sce_2
+#sce_2 <- measureObjects(mask = masks, image = images, img_id = "ImageName")
+#sce_2
 ```
 
 ---
