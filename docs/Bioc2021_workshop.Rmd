@@ -194,7 +194,7 @@ data can also be parallelised, which is only recommended for large images.
 format(object.size(images), units = "Kb")
 
 images_ondisk <- loadImages("../data/images/", pattern = ".tiff", 
-                            on_disk = TRUE, h5FilesPath = "../data",
+                            on_disk = TRUE, h5FilesPath = "../data/images",
                             BPPARAM = BiocParallel::bpparam())
 
 format(object.size(images_ondisk), units = "Kb")
