@@ -47,10 +47,13 @@ vignette: |
 
 # Data and code availability
 
-To follow this tutorial, please visit [https://github.com/BodenmillerGroup/cytomapper_demos/docs](https://github.com/BodenmillerGroup/cytomapper_demos/docs).
-The compiled .html of this workshop is hosted at: [https://bodenmillergroup.github.io/cytomapper_demos](https://bodenmillergroup.github.io/cytomapper_demos).
-
-The [cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html) package can be installed via:
+To follow this tutorial, please visit
+[https://github.com/BodenmillerGroup/cytomapper_demos/docs](https://github.com/BodenmillerGroup/cytomapper_demos/docs).
+The compiled .html of this workshop is hosted at:
+[https://bodenmillergroup.github.io/cytomapper_demos](https://bodenmillergroup.github.io/cytomapper_demos).
+The
+[cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html)
+package can be installed via:
 
 ```{r installation, eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -65,32 +68,218 @@ To reproduce the analysis, clone the repository:
 git clone https://github.com/BodenmillerGroup/cytomapper_demos.git
 ```
 
-and open the `Bioc2021_workshop.Rmd` file in the `docs` folder. 
+and open the `Bioc2021_workshop.Rmd` file in the `docs` folder.
 
-We provide three images, their segmentation masks and the quantified single-cell data in form of a `SingleCellExperiment` object
-in the `data` folder. The data is taken from [A map of human type 1 diabetes progression by imaging mass cytometry](https://www.sciencedirect.com/science/article/pii/S1550413118306910).
+We provide three images, their segmentation masks and the quantified single-cell
+data in form of a `SingleCellExperiment` object in the `data` folder. The data
+is taken from [A map of human type 1 diabetes progression by imaging mass
+cytometry](https://www.sciencedirect.com/science/article/pii/S1550413118306910).
 
 # Introduction
 
+The analysis and visualization of highly-multiplexed imaging data relies on three
+types of data structures:
+
+* Multi-channel images realized as three dimensional arrays where the numeric
+entry of each voxel represents the intensity of the pixel at position `x` and
+`y` for channel `c`.
+
+* Single-channel segmentation masks realized as matrices where sets of pixels
+with the same integer ID represent individual objects (here, these are segmented
+cells)
+
+* A table containing the quantified features per cell and channel (e.g. mean
+pixel intensity)
+
+The `cytomapper` package handles these data types using objects of the following
+S4 classes:
+
+* Multiple multi-channel images are stored in form of `EBImage::Image` objects
+within a `cytomapper::CytoImageList` object
+
+* Multiple single-channel segmentation masks are stored in form of
+`EBImage::Image` objects within a `cytomapper::CytoImageList` object
+
+* Per-cell intensity measures and cell-/channel-specific metadata are stored in
+a `SingleCellExperiment::SingleCellExperiment` container
+
 ![cytomapper overview figure. A) The plotCells function combines a SingleCellExperiment and CytoImageList object to visualize marker expression or cell-specific metadata on segmentation masks. B) The plotPixels function requires a CytoImageList object to visualize the combined expression of up to six markers as composite images](imgs/Overview.png)
 
-# Installation
+The `cytomapper` package contains three broad functionalities:
+
+* Visualization of pixel-intensities as composites of up to six channels (`plotPixels`)
+
+* Visualization of cell-specific features on segmentation masks (`plotCells`)
+
+* Interactive gating of cells and visualization of gated cells on images (`cytomapperShiny`)
+
+The follwing demonstration gives an overview on (1) data handling and processing,
+(2) data visualization and (3) interactive analysis.
+
+We use [imaging mass cytometry](https://www.nature.com/articles/nmeth.2869) data
+to highlight the functionality of the `cytomapper` package. However, any imaging
+technology is supported as long as the data can be read into R (memory
+restrictions and file type restrictions.)
+
+The raw data has been processed using the [ImcSegmentationPipeline](https://github.com/BodenmillerGroup/ImcSegmentationPipeline).
+In this tutorial, we assume that image segmentation has been performed beforehand.
 
 # Reading in the data
 
-## Images
+The following section describes how to read in images (e.g. in `.tiff` format)
+into `CytoImageList` objects and how to generate `SingleCellExperiment`
+objects from these images.
+
+## Reading in images
+
+The `cytomapper::loadImages` function reads in multi-channel images and segmentation masks into `CytoImageList` objects.
+
+```{r, reading-in-data-1, message=FALSE}
+library(cytomapper)
+
+# Read in 32-bit multi-channel images
+(images <- loadImages("../data/images/", pattern = ".tiff"))
+
+# Read in 16-bit unsigned integer segmentation masks
+(masks <- loadImages("../data/masks/", pattern = ".tiff"))
+```
+
+It is always recommended to observe the numeric pixel values to make sure that
+images were read in correctly:
+
+```{r histograms}
+# multi-channel images - first image, first channel
+hist(log10(images[[1]][,,1] + 1))
+
+# Segmentation mask
+masks[[1]]
+```
+
+We notice, that the segmentation masks were not read in as integer images. 
+This behavior arises due to issues with accessing the `tiff` metadata after
+pre-processing using `CellProfiler`.
+
+In these cases, the `cytomapper::scaleImages` function can be used to rescale
+segmentation masks to only contain interger IDs. Here, the scaling factor
+is `2 ^ 16 - 1 = 65535` accounting for the 16-bit unsigned integer encoding.
+
+```{r scaleImages}
+masks <- scaleImages(masks, 2 ^ 16 - 1)
+
+masks[[1]]
+```
+
+As an alternative, while reading in the images, the `as.is` option can be set to `TRUE`.
+
+```{r as.is}
+masks <- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE)
+
+masks[[1]]
+```
+
+We can already visualize the segmentation mask to get an idea of the tissue 
+structure:
+
+```{r mask-viz}
+plotCells(masks)
+```
 
 ### Reading data to disk
 
-## SingleCellExperiment object
+To increase scalability of the `cytomapper` package, images can be stored on
+disk making use of the `HDF5Array` and `DelayedArray` package. Reading in the
+data can also be parallelised, which is only recommended for large images.
 
-measureObjects
+```{r read-in-to-disk}
+format(object.size(images), units = "Kb")
+
+images_ondisk <- loadImages("../data/images/", pattern = ".tiff", 
+                            on_disk = TRUE, h5FilesPath = "../data",
+                            BPPARAM = BiocParallel::bpparam())
+
+format(object.size(images_ondisk), units = "Kb")
+```
+
+All `cytomapper` functions support images and masks stored on disk.
+
+## The `SingleCellExperiment` object
+
+In the original analysis, single-cell features have been extracted using
+`CellProfiler`. For this tutorial, we provide a `SingleCellExperiment` object,
+which already contains the mean intensities per cell and channel and all
+relevant metadata (e.g. cell-type annotation).
+
+The `SingleCellExperiment` can be read-in form the `data` folder:
+
+```{r read-in-sce}
+(sce <- readRDS("../data/sce.rds"))
+
+colData(sce)
+```
 
 # Image pre-processing
 
+The following section will discuss setting image metadata and image normalization.
+
 ## Setting metadata
 
+Before image visualization, there are a few metadata that need to be set.
+
+We will need to set the channel names of the images via the `channelNames`
+getter/setter function. The channel order here is the same as the row order of
+the `SingleCellExperiment` object. We will also need to synchronise the image
+IDs across the multi-channel images and segmentation masks by storing a
+DataFrame in the elementMetadata slot of the CytoImageList object.
+
+```{r, format-the-data, message=FALSE}
+# Add channel names
+channelNames(images) <- rownames(sce)
+
+# Add image name to metadata
+(mcols(images) <- mcols(masks) <- DataFrame(ImageName = c("E30", "G23", "J01")))
+```
+
 ## Normalization
+
+Channel normalization is a crucial step for image visualization to enhance
+the visibility of biological signals. One option is to transform (e.g. `sqrt`)
+transform the images. A more widely used alternative is to perform a range-scaling
+and clipping of channel intensities.
+
+The `cytomapper` package exports the `normalize` function that scales channels
+between 0 and 1 across all images (by default). Clipping is performed by setting
+the `inputRange` parameter in the `normalize` function.
+
+```{r normalization}
+# Min-max normalization
+images_norm <- normalize(images)
+
+# Clip the images
+images_norm <- normalize(images_norm, inputRange = c(0, 0.2))
+```
+
+## Measuring object features
+
+The `cytomapper::measureObjects` function takes the segmentation masks and
+multi- channel image objects and  computes morphological (e.g. cell shape, size
+and location) and intensity features (default: mean intensity per channel and
+object/cell).
+
+```{r, measure-features}
+sce_measured <- measureObjects(mask = masks, image = images, img_id = "ImageName")
+sce_measured
+```
+
+The pixel intensities per cell can be summarized in different ways (e.g. as
+quantiles). Furthermore, parallelization is possible by setting `BPPARAM = bpparam()`. 
+Cell-specific morphological features are stored in `colData(sce)` while the 
+mean pixel intensities per cell and channel are stored in `counts(sce)`.
+
+```{r show-internal-structure}
+colData(sce_measured)
+
+counts(sce_measured)[1:10, 1:10]
+```
 
 # Data visualization
 
@@ -101,6 +290,16 @@ measureObjects
 ## outline Cells
 
 # Interactive visualization
+
+# Further resources
+
+imcdatasets
+
+imcRtools
+
+steinbock
+
+imcsegmentationpipeline
 
 # Session info {.unnumbered}
 
