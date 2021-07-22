@@ -23,6 +23,10 @@ author:
 output:
     BiocStyle::html_document:
         toc_float: yes
+        pandoc_args: [
+            "--output=index.html"
+            ]
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(dirname(inputFile),'/index.html')) })
 abstract: |
     Highly multiplexed imaging cytometry acquires the single-cell expression of
     selected proteins in a spatially-resolved fashion. These measurements can be
@@ -41,10 +45,62 @@ vignette: |
     %\VignetteEncoding{UTF-8}
 ---
 
+# Data and code availability
+
+To follow this tutorial, please visit [https://github.com/BodenmillerGroup/cytomapper_demos/docs](https://github.com/BodenmillerGroup/cytomapper_demos/docs).
+The compiled .html of this workshop is hosted at: [https://bodenmillergroup.github.io/cytomapper_demos](https://bodenmillergroup.github.io/cytomapper_demos).
+
+The [cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html) package can be installed via:
+
+```{r installation, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("cytomapper")
+```
+
+To reproduce the analysis, clone the repository:
+
+```
+git clone https://github.com/BodenmillerGroup/cytomapper_demos.git
+```
+
+and open the `Bioc2021_workshop.Rmd` file in the `docs` folder. 
+
+We provide three images, their segmentation masks and the quantified single-cell data in form of a `SingleCellExperiment` object
+in the `data` folder. The data is taken from [A map of human type 1 diabetes progression by imaging mass cytometry](https://www.sciencedirect.com/science/article/pii/S1550413118306910).
+
 # Introduction
 
+![cytomapper overview figure. A) The plotCells function combines a SingleCellExperiment and CytoImageList object to visualize marker expression or cell-specific metadata on segmentation masks. B) The plotPixels function requires a CytoImageList object to visualize the combined expression of up to six markers as composite images](imgs/Overview.png)
 
+# Installation
 
+# Reading in the data
+
+## Images
+
+### Reading data to disk
+
+## SingleCellExperiment object
+
+measureObjects
+
+# Image pre-processing
+
+## Setting metadata
+
+## Normalization
+
+# Data visualization
+
+## plotPixels
+
+## plotCells
+
+## outline Cells
+
+# Interactive visualization
 
 # Session info {.unnumbered}
 
