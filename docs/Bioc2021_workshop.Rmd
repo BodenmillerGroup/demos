@@ -1,9 +1,8 @@
 ---
 title: "Bioc2021: Visualisation of highly-multiplexed imaging data in R"
 date: "`r BiocStyle::doc_date()`"
-package: "`r BiocStyle::pkg_ver('cytomapper')`"
 author:
-- name: Nils Eling
+- name: Nils Eling 
   affiliation: 
   - Department for Quantitative Biomedicine, University of Zurich
   - Institute for Molecular Health Sciences, ETH Zurich
@@ -44,6 +43,9 @@ vignette: |
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---
+
+`r icons::fontawesome('twitter')` [@NilsEling](https://twitter.com/NilsEling)  
+`r icons::fontawesome('github')` [@nilseling](https://github.com/nilseling)
 
 # Data and code availability
 
@@ -477,28 +479,29 @@ if (interactive()) {
 }
 ```
 
-Using the Shiny application
+**Using the Shiny application**
+
 This help page provides a recommended workflow on how to most efficiently use the app. The workflow is solely a recommendation - the app provides full flexibility to change settings during each step. To see the full documentation, please refer to the help page found at `?cytomapperShiny`
 
-1. Select the number of plots
+1. Select the number of plots  
 The slider under General controls can be used to specify the number of plots on which to perform gating. Up to two markers can be visualized per plot.
 
-2. Select the sample
+2. Select the sample  
 The assay dropdown selection under General controls allows the user to specify on which assay entry to perform gating. In most cases, a log- or arcsinh-transformation can help to distinguish between 'positive' and 'negative' populations.
 
-3. Select the markers
+3. Select the markers  
 For each plot, up to two markers can be specified. If selecting a single marker, please specify this marker in the first of the two dropdown menus. A violin plot is used to visualize the expression of a single marker while a scatter plot is used to visualize the expression of two markers.
 
-4. Gate cells
+4. Gate cells  
 When selecting cells in one plot, only those cells are visualized on the following plot. Once markers, the assay or the number of plots are changed, gates are cleared.
 
-5. Observe the selected cells
+5. Observe the selected cells  
 After gating, the selected cells are visualized on the corresponding images by switching to the Images tab. By default, the first marker is selected. The user can change the displayed marker or press reset marker to switch to the markers used for gating. If a multi-channel image object is provided, the contrast of the image can be changed. The right panel visualizes the selected cells either by filling in the segmentation masks or by outlining the cells on the images.
 
-6. Change samples
+6. Change samples  
 Samples can now be iteratively changed using the dropdown menu under General controls . The gates will remain on the plots and can be adjusted for each sample.
 
-7. Save the selected cells
+7. Save the selected cells  
 Finally, the selected cells can be saved by clicking the download button next to the '?' symbol. The selected cells will be stored as a `SingleCellExperiment` object in .rds format. Per selection, the user can provide a Cell label that will be stored in the `colData` under the `cytomapper_CellLabel` entry of the downloaded object.
 
 # Further resources
@@ -508,7 +511,7 @@ For pre-processing multiplexed imaging data, please refer to the [ImcSegmentatio
 
 To test the `cytomapper` package on different datasets, check out the [imcdatasets](https://bioconductor.org/packages/release/data/experiment/html/imcdatasets.html) Bioconductor package.
 
-The [imcRtools](https://github.com/BodenmillerGroup/imcRtools) is currently being developed
+The [imcRtools](https://github.com/BodenmillerGroup/imcRtools) package is currently being developed
 to facilitate handling of multiplexed imaging data and spatial analysis.
 
 # Session info {.unnumbered}
