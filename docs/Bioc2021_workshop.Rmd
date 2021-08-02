@@ -27,17 +27,19 @@ output:
             ]
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(dirname(inputFile),'/index.html')) })
 abstract: |
-    Highly multiplexed imaging cytometry acquires the single-cell expression of
-    selected proteins in a spatially-resolved fashion. These measurements can be
+    Highly multiplexed imaging acquires the single-cell expression of
+    RNA, metabolites or proteins in a spatially-resolved fashion. These measurements can be
     visualized across multiple length-scales. First, pixel-level intensities
     represent the spatial distributions of feature expression with highest
     resolution. Second, after segmentation, expression values or cell-level
     metadata (e.g. cell-type information) can be visualized on segmented cell
-    areas. This package contains functions for the visualization of multiplexed
-    read-outs and cell-level information obtained by multiplexed imaging
-    cytometry. The main functions of this package allow 1. the visualization of
-    pixel-level information across multiple channels and 2. the display of
-    cell-level information (expression and/or metadata) on segmentation masks.
+    areas. This workflow describes the use of the [cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html) 
+    Bioconductor package to demonstrate functions for the visualization of multiplexed
+    read-outs and cell-level information obtained by multiplexed imaging. 
+    The main functions of this package allow 1. the visualization of
+    pixel-level information across multiple channels, 2. the display of
+    cell-level information (expression and/or metadata) on segmentation masks 
+    and 3. gating and visualisation of single cells.
 vignette: |
     %\VignetteIndexEntry{"Visualization of imaging cytometry data in R"}
     %\VignetteEngine{knitr::rmarkdown}
@@ -50,7 +52,7 @@ vignette: |
 # Data and code availability
 
 To follow this tutorial, please visit
-[https://github.com/BodenmillerGroup/cytomapper_demos/docs](https://github.com/BodenmillerGroup/cytomapper_demos/docs).
+[https://github.com/BodenmillerGroup/cytomapper_demos/tree/main/docs](https://github.com/BodenmillerGroup/cytomapper_demos/tree/main/docs).
 The compiled .html of this workshop is hosted at:
 [https://bodenmillergroup.github.io/cytomapper_demos](https://bodenmillergroup.github.io/cytomapper_demos).
 The
@@ -82,9 +84,9 @@ cytometry](https://www.sciencedirect.com/science/article/pii/S1550413118306910).
 The analysis and visualization of highly-multiplexed imaging data relies on three
 types of data structures:
 
-* Multi-channel images realized as three dimensional arrays where the numeric
-entry of each voxel represents the intensity of the pixel at position `x` and
-`y` for channel `c`.
+* Multi-channel images realized as three dimensional arrays or dimensions `x`,
+`y`, `c` where the numeric entry of each voxel represents the intensity of the
+pixel at position `x` and `y` for channel `c`.
 
 * Single-channel segmentation masks realized as matrices where sets of pixels
 with the same integer ID represent individual objects (here, these are segmented
@@ -115,8 +117,8 @@ The `cytomapper` package contains three broad functionalities:
 
 * Interactive gating of cells and visualization of gated cells on images (`cytomapperShiny`)
 
-The follwing demonstration gives an overview on (1) data handling and processing,
-(2) data visualization and (3) interactive analysis.
+The follwing demonstration gives an overview on data handling and processing, 
+data visualization and interactive analyses.
 
 We use [imaging mass cytometry](https://www.nature.com/articles/nmeth.2869) data
 to highlight the functionality of the `cytomapper` package. However, any imaging
@@ -162,7 +164,7 @@ This behavior arises due to issues with accessing the `tiff` metadata after
 pre-processing using `CellProfiler`.
 
 In these cases, the `cytomapper::scaleImages` function can be used to rescale
-segmentation masks to only contain interger IDs. Here, the scaling factor
+segmentation masks to only contain integer IDs. Here, the scaling factor
 is `2 ^ 16 - 1 = 65535` accounting for the 16-bit unsigned integer encoding.
 
 ```{r scaleImages}
@@ -206,17 +208,17 @@ All `cytomapper` functions support images and masks stored on disk.
 
 ## The `SingleCellExperiment` object
 
-In the original analysis, single-cell features have been extracted using
-`CellProfiler`. For this tutorial, we provide a `SingleCellExperiment` object,
-which already contains the mean intensities per cell and channel and all
-relevant metadata (e.g. cell-type annotation).
+In the original analysis of this dataset, single-cell features have been
+extracted using `CellProfiler`. For this tutorial, we provide a
+`SingleCellExperiment` object, which already contains the mean intensities per
+cell and channel and all relevant metadata (e.g. cell-type annotation).
 
-The `SingleCellExperiment` can be read-in form the `data` folder:
+The `SingleCellExperiment` can be read-in from the `data` folder:
 
 ```{r read-in-sce}
 (sce <- readRDS("../data/sce.rds"))
 
-colData(sce)
+colData(sce)[,c("ImageName", "CellNumber", "CellType")]
 ```
 
 # Image pre-processing
@@ -225,7 +227,7 @@ The following section will discuss setting image metadata and image normalizatio
 
 ## Setting metadata
 
-Before image visualization, there are a few metadata that need to be set.
+Before image visualization, there are a few metadata entries that need to be set.
 
 We will need to set the channel names of the images via the `channelNames`
 getter/setter function. The channel order here is the same as the row order of
@@ -244,8 +246,8 @@ channelNames(images) <- rownames(sce)
 ## Normalization
 
 Channel normalization is a crucial step for image visualization to enhance
-the visibility of biological signals. One option is to transform (e.g. `sqrt`)
-transform the images. A more widely used alternative is to perform a range-scaling
+the visibility of biological signals. One option is to transform (e.g. `sqrt`) 
+the images. A more widely used alternative is to perform a range-scaling
 and clipping of channel intensities.
 
 The `cytomapper` package exports the `normalize` function that scales channels
@@ -268,7 +270,8 @@ and location) and intensity features (default: mean intensity per channel and
 object/cell).
 
 ```{r, measure-features}
-sce_measured <- measureObjects(mask = masks, image = images, img_id = "ImageName")
+sce_measured <- measureObjects(mask = masks, image = images, 
+                               img_id = "ImageName")
 sce_measured
 ```
 
@@ -309,7 +312,7 @@ plotPixels(images_norm,
 We can see a decline in pro-insulin expression while E-cadherin expression stays the same.
 
 Instead of normalizing the images, you can also specify the background (b), 
-contrast (c) and gamma (g) level of the images:
+contrast (c) and gamma (g) levels of the images:
 
 ```{r plotPixels-3}
 plotPixels(images, 
@@ -481,28 +484,53 @@ if (interactive()) {
 
 **Using the Shiny application**
 
-This help page provides a recommended workflow on how to most efficiently use the app. The workflow is solely a recommendation - the app provides full flexibility to change settings during each step. To see the full documentation, please refer to the help page found at `?cytomapperShiny`
+The help page provides a recommended workflow on how to most efficiently use the
+app. The workflow is solely a recommendation - the app provides full flexibility
+to change settings during each step. To see the full documentation, please refer
+to the help page found at `?cytomapperShiny`
 
-1. Select the number of plots  
-The slider under General controls can be used to specify the number of plots on which to perform gating. Up to two markers can be visualized per plot.
+1. Select the number of plots 
+The slider under "General controls" can be used to
+specify the number of plots on which to perform gating. Up to two markers can be
+visualized per plot.
 
 2. Select the sample  
-The assay dropdown selection under General controls allows the user to specify on which assay entry to perform gating. In most cases, a log- or arcsinh-transformation can help to distinguish between 'positive' and 'negative' populations.
+The assay dropdown selection under "General controls" allows the user to specify
+on which assay entry to perform gating. In most cases, a log- or
+arcsinh-transformation can help to distinguish between 'positive' and 'negative'
+populations.
 
 3. Select the markers  
-For each plot, up to two markers can be specified. If selecting a single marker, please specify this marker in the first of the two dropdown menus. A violin plot is used to visualize the expression of a single marker while a scatter plot is used to visualize the expression of two markers.
+For each plot, up to two markers can be specified. If selecting a single marker,
+please specify this marker in the first of the two dropdown menus. A violin plot
+is used to visualize the expression of a single marker while a scatter plot is
+used to visualize the expression of two markers.
 
 4. Gate cells  
-When selecting cells in one plot, only those cells are visualized on the following plot. Once markers, the assay or the number of plots are changed, gates are cleared.
+When selecting cells in one plot, only those cells are visualized on the
+following plot. Once markers, the assay or the number of plots are changed,
+gates are cleared.
 
 5. Observe the selected cells  
-After gating, the selected cells are visualized on the corresponding images by switching to the Images tab. By default, the first marker is selected. The user can change the displayed marker or press reset marker to switch to the markers used for gating. If a multi-channel image object is provided, the contrast of the image can be changed. The right panel visualizes the selected cells either by filling in the segmentation masks or by outlining the cells on the images.
+After gating, the selected cells are visualized on the corresponding images by
+switching to the "Images tab". By default, the first marker is selected. The
+user can change the displayed marker or press reset marker to switch to the
+markers used for gating. If a multi-channel image object is provided, the
+contrast of the image can be changed. The right panel visualizes the selected
+cells either by filling in the segmentation masks or by outlining the cells on
+the images.
 
 6. Change samples  
-Samples can now be iteratively changed using the dropdown menu under General controls . The gates will remain on the plots and can be adjusted for each sample.
+Samples can now be iteratively changed using the dropdown menu under General
+controls . The gates will remain on the plots and can be adjusted for each
+sample.
 
 7. Save the selected cells  
-Finally, the selected cells can be saved by clicking the download button next to the '?' symbol. The selected cells will be stored as a `SingleCellExperiment` object in .rds format. Per selection, the user can provide a Cell label that will be stored in the `colData` under the `cytomapper_CellLabel` entry of the downloaded object.
+Finally, the selected cells can be saved by clicking the download button next to
+the '?' symbol. The selected cells will be stored as a `SingleCellExperiment`
+object in .rds format. Per selection, the user can provide a Cell label that
+will be stored in the `colData` under the `cytomapper_CellLabel` entry of the
+downloaded object.
 
 # Further resources
 
