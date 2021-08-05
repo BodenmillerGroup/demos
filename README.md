@@ -7,6 +7,18 @@ This repository contains software demonstrations focusing on the [cytomapper](ht
 Each demo is hosted in its independent branch.
 The following demos are gathered here:
 
+### Bioc2021 workshop presentation
+
+The workshop given at the [Bioc2021](https://bioc2021.bioconductor.org/) conference is hosted [here](https://github.com/BodenmillerGroup/cytomapper_demos).
+To follow the workshop, please clone the repository:
+
+```
+git clone https://github.com/BodenmillerGroup/cytomapper_demos.git
+```
+
+And open the `Bioc2021_workshop.Rmd` file in `docs`.
+The compiled vignette can be found at [https://bodenmillergroup.github.io/cytomapper_demos/](https://bodenmillergroup.github.io/cytomapper_demos/).
+
 ### useR! 2021 presentation
 
 The `cytomapper` demonstration as presented at the [useR! 2021 conference](https://user2021.r-project.org/) can be found [here](https://github.com/BodenmillerGroup/cytomapper_demos/blob/useR2021/docs/index.Rmd).
