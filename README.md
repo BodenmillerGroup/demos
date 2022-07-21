@@ -8,6 +8,19 @@ Each demo is hosted in its independent branch.
 The most current demonstration is compiled as `index.html` in the `docs` folder and will automatically be hosted at [bodenmillergroup.github.io/demos](https://www.bodenmillergroup.github.io/demos)
 The following demos are gathered here:
 
+### Bioc2022 workshop presentation
+
+The workshop given at the [Bioc2022](https://bioc2022.bioconductor.org/) conference can be found [here](https://www.bodenmillergroup.github.io/demos).
+It highlights the use of the [steinbock](https://github.com/BodenmillerGroup/steinbock) python framework and the [imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html) R/Bioconductor package.
+
+To follow along, please clone the repository
+
+```
+git clone https://github.com/BodenmillerGroup/demos.git
+```
+
+and open the `Bioc2022_workshop.Rmd` file.
+
 ### Bioc2021 workshop presentation
 
 The workshop given at the [Bioc2021](https://bioc2021.bioconductor.org/) conference can be found [here](https://github.com/BodenmillerGroup/demos/blob/Bioc2021/docs/Bioc2021_workshop.Rmd).
