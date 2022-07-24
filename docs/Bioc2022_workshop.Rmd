@@ -25,13 +25,17 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 abstract: |
     TODO
 vignette: |
-    %\VignetteIndexEntry{"Visualization of imaging cytometry data in R"}
+    %\VignetteIndexEntry{"TODO"}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---
 
 `r fontawesome::fa(name = "github", fill = "#333")` <a href="https://github.com/nilseling">@nilseling</a>  
 `r fontawesome::fa(name = "twitter", fill = "#1DA1F2")` <a href="https://twitter.com/NilsEling">@NilsEling</a> 
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "~/Github/demos/docs/")
+```
 
 # Data and code availability
 
@@ -47,7 +51,7 @@ package can be installed via:
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install("imcRtools")
+BiocManager::install(c("imcRtools", "cytomapper"))
 ```
 
 To reproduce the analysis, clone the repository:
@@ -88,26 +92,25 @@ sample/patient metadata information here:
 
 ## TODO: Dowload the raw data
 
-```{r download-raw}
+```{r download-raw, message=FALSE}
+options(timeout=10000)
 download.file("https://zenodo.org/record/5949116/files/panel.csv",
-              "data/steinbock/raw/panel.csv")
+              "../data/steinbock/raw/panel.csv")
 download.file("https://zenodo.org/record/5949116/files/Patient1.zip",
-              "data/steinbock/raw/Patient1.zip")
+              "../data/steinbock/raw/Patient1.zip")
 download.file("https://zenodo.org/record/5949116/files/Patient2.zip",
-              "data/steinbock/raw/Patient2.zip")
+              "../data/steinbock/raw/Patient2.zip")
 download.file("https://zenodo.org/record/5949116/files/Patient3.zip",
-              "data/steinbock/raw/Patient3.zip")
+              "../data/steinbock/raw/Patient3.zip")
 download.file("https://zenodo.org/record/5949116/files/Patient4.zip",
-              "data/steinbock/raw/Patient4.zip")
+              "../data/steinbock/raw/Patient4.zip")
 ```
 
 ## The steinbock framework
 
 ```{bash}
 #!/usr/bin/env bash
-BASEDIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-
-alias steinbock="docker run -v ${BASEDIR}:/data -u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.2"
+alias steinbock="docker run -v path/to/demos/data/steinbock:/data -u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.2"
 
 # panel pre-processing
 steinbock preprocess imc panel --namecol Clean_Target
@@ -124,64 +127,552 @@ steinbock measure regionprops
 steinbock measure neighbors --type expansion --dmax 4
 ```
 
+Download steinbock data
+
+```{r download-steinbock}
+# download intensities
+url <- "https://zenodo.org/record/6642699/files/intensities.zip"
+destfile <- "data/steinbock/intensities.zip"
+download.file(url, destfile)
+unzip(destfile, exdir="data/steinbock", overwrite=TRUE)
+unlink(destfile)
+
+# download regionprops
+url <- "https://zenodo.org/record/6642699/files/regionprops.zip"
+destfile <- "data/steinbock/regionprops.zip"
+download.file(url, destfile)
+unzip(destfile, exdir="data/steinbock", overwrite=TRUE)
+unlink(destfile)
+
+
+# download neighbors
+url <- "https://zenodo.org/record/6642699/files/neighbors.zip"
+destfile <- "data/steinbock/neighbors.zip"
+download.file(url, destfile)
+unzip(destfile, exdir="data/steinbock", overwrite=TRUE)
+unlink(destfile)
+
+# download images
+url <- "https://zenodo.org/record/6642699/files/img.zip"
+destfile <- "data/steinbock/img.zip"
+download.file(url, destfile)
+unzip(destfile, exdir="data/steinbock", overwrite=TRUE)
+unlink(destfile)
+
+# download masks
+url <- "https://zenodo.org/record/6642699/files/masks_deepcell.zip"
+destfile <- "data/steinbock/masks_deepcell.zip"
+download.file(url, destfile)
+unzip(destfile, exdir="data/steinbock", overwrite=TRUE)
+unlink(destfile)
+
+# download individual files
+download.file("https://zenodo.org/record/6642699/files/panel.csv", 
+              "data/steinbock/panel.csv")
+download.file("https://zenodo.org/record/6642699/files/images.csv", 
+              "data/steinbock/images.csv")
+```
+
 ## Reading in single-cell data
+
+```{r read-steinbock, message=FALSE}
+library(imcRtools)
+
+spe <- read_steinbock("../data/steinbock/")
+spe
+```
+
+By default, single-cell data is read in as `SpatialExperiment` object. 
+The summarized pixel intensities per channel and cell (here mean intensity) are
+stored in the `counts` slot. Columns represent cells and rows represent channels.
+
+```{r counts}
+counts(spe)[1:5,1:5]
+```
+
+Metadata associated to individual cells are stored in the `colData` slot. After
+initial image processing, these metadata include the numeric identifier (`ObjectNumber`),
+the area, and morphological features of each cell. In addition, `sample_id` stores
+the image name from which each cell was extracted and the width and height of the
+corresponding images are stored.
+
+```{r colData}
+head(colData(spe))
+```
+
+The main difference between the `SpatialExperiment` and the
+`SingleCellExperiment` data container in the current setting is the way spatial
+locations of all cells are stored. For the `SingleCellExperiment` container, the
+locations are stored in the `colData` slot while the `SpatialExperiment`
+container stores them in the `spatialCoords` slot:
+
+```{r spatialCoords}
+head(spatialCoords(spe))
+```
+
+The _spatial object graphs_ generated by steinbock (see Section
+\@ref(feature-extraction) are read into a `colPair` slot of the
+`SpatialExperiment` (or `SingleCellExperiment`) object. Cell-cell interactions
+(cells in close spatial proximity) are represented as "edge list" (stored as
+`SelfHits` object). Here, the left side represents the column indices of the
+"from" cells and the right side represents the column indices of the "to"
+cells. For visualization of the _spatial object graphs_, please refer to
+Section \@ref(spatial-viz).
+
+```{r colPair}
+colPair(spe, "neighborhood")
+```
+
+Finally, metadata regarding the channels are stored in the `rowData` slot. This
+information is extracted from the `panel.csv` file. Channels are ordered by
+isotope mass and therefore match the channel order of the multi-channel images
+(see Section \@ref(read-images)).
+
+```{r rowData}
+head(rowData(spe))
+```
+
+TODO: download final spe object
+
+```{r download-processed, message=FALSE}
+download.file("https://zenodo.org/record/6810879/files/spe.rds",
+              "../data/spe.rds")
+
+(spe <- readRDS("../data/spe.rds"))
+```
 
 ## Reading in images
 
-The `cytomapper::loadImages` function reads in multi-channel images and segmentation masks into `CytoImageList` objects.
+The `loadImages` function is used to read in processed multi-channel images and
+their corresponding segmentation masks. Of note, the multi-channel images generated by `steinbock`
+are saved as 32-bit images while the segmentation masks are
+saved as 16-bit images. To correctly scale pixel values of the segmentation
+masks when reading them in set `as.is = TRUE`.
 
-```{r, reading-in-data-1, message=FALSE}
+```{r read-images}
 library(cytomapper)
 
-# Read in 32-bit multi-channel images
-(images <- loadImages("../data/images/", pattern = ".tiff"))
-
-# Read in 16-bit unsigned integer segmentation masks
-(masks <- loadImages("../data/masks/", pattern = ".tiff"))
+images <- loadImages("../data/steinbock/img/")
+masks <- loadImages("../data/steinbock/masks_deepcell/", as.is = TRUE)
 ```
 
-It is always recommended to observe the numeric pixel values to make sure that
-images were read in correctly:
+In the case of multi-channel images, it is beneficial to set the `channelNames`
+for easy visualization. Using the `steinbock` framework, the channel order of
+the single-cell data matches the channel order of the multi-channel images.
+However, it is recommended to make sure that the channel order is identical
+between the single-cell data and the images.
 
-```{r histograms}
-# multi-channel images - first image, first channel
-hist(log10(images[[1]][,,1] + 1))
-
-# Segmentation mask
-masks[[1]]
+```{r set-channelNames}
+channelNames(images) <- rownames(spe)
+images
 ```
 
-We notice, that the segmentation masks were not read in as integer images. 
-This behavior arises due to issues with accessing the `tiff` metadata after
-pre-processing using `CellProfiler`.
+For visualization shown in Section \@ref(image-visualization) we will need to
+add additional metadata to the `elementMetadata` slot of the `CytoImageList`
+objects. This slot is easily accessible using the `mcols` function.
 
-In these cases, the `cytomapper::scaleImages` function can be used to rescale
-segmentation masks to only contain integer IDs. Here, the scaling factor
-is `2 ^ 16 - 1 = 65535` accounting for the 16-bit unsigned integer encoding.
+Here, we will save the matched `sample_id`, `patient_id` and `indication`
+information within the `elementMetadata` slot of the multi-channel images and
+segmentation masks objects. It is crucial that the order of the images in 
+both `CytoImageList` objects is the same.
 
-```{r scaleImages}
-masks <- scaleImages(masks, 2 ^ 16 - 1)
+```{r add-metadata}
+library(tidyverse)
 
-masks[[1]]
+all.equal(names(images), names(masks))
+
+mcols(images) <- mcols(masks) <- DataFrame(sample_id = names(images))
 ```
 
-As an alternative, while reading in the images, the `as.is` option can be set to `TRUE`.
+## Generate single-cell data from images
 
-```{r as.is}
-masks <- loadImages("../data/masks/", pattern = ".tiff", as.is = TRUE)
+An alternative way of generating a `SingleCellExperiment` object directly 
+from the multi-channel images and segmentation masks is supported by the 
+[measureObjects](https://bodenmillergroup.github.io/cytomapper/reference/measureObjects.html)
+function of the `cytomapper` package. For each cell present in the `masks`
+object, the function computes the mean pixel intensity per channel as well as
+morphological features (area, radius, major axis length, eccentricity) and the 
+location of cells:
 
-masks[[1]]
+```{r measureObjects, message=FALSE}
+cytomapper_sce <- measureObjects(masks, image = images, img_id = "sample_id")
+
+cytomapper_sce
 ```
 
-We can already visualize the segmentation mask to get an idea of the tissue 
-structure:
+## Image visualization
 
-```{r mask-viz}
-plotCells(masks)
+```{r sample-images}
+# Sample images
+set.seed(220517)
+cur_id <- sample(unique(spe$sample_id), 3)
+cur_images <- images[names(images) %in% cur_id]
+cur_masks <- masks[names(masks) %in% cur_id]
+```
+
+### Pixel visualization {#pixel-visualization}
+
+The following section gives examples for visualizing individual channels or 
+multiple channels as pseudo-color composite images. For this the `cytomapper`
+package exports the `plotPixels` function which expects a `CytoImageList` object
+storing one or multiple multi-channel images. 
+
+The following example highlights the visualization of 6 markers (maximum allowed
+number of markers) at once per image. The markers indicate the spatial
+distribution of tumor cells (E-caherin), T cells (CD3), B cells (CD20), CD8+ T
+cells (CD8a), plasma cells (CD38) and proliferating cells (Ki67).
+
+```{r 6-channel}
+plotPixels(cur_images, 
+           colour_by = c("Ecad", "CD3", "CD20", "CD8a", "CD38", "Ki67"),
+           bcg = list(Ecad = c(0, 5, 1),
+                      CD3 = c(0, 5, 1),
+                      CD20 = c(0, 5, 1),
+                      CD8a = c(0, 5, 1),
+                      CD38 = c(0, 8, 1),
+                      Ki67 = c(0, 5, 1)))
+```
+
+### Cell visualization {#mask-visualization}
+
+In the following section, we will show examples on how to visualize single
+cells either as segmentation masks or outlined on composite images. This type
+of visualization allows to observe the spatial distribution of cell phenotypes,
+the visual assessment of morphological features and quality control in terms
+of cell segmentation and phenotyping.
+
+The `cytomapper` package provides the `plotCells` function that accepts a
+`CytoImageList` object containing segmentation masks. These are defined as
+single channel images where sets of pixels with the same integer ID identify
+individual cells. This integer ID can be found as an entry in the `colData(spe)`
+slot and as pixel information in the segmentation masks. The entry in
+`colData(spe)` needs to be specified via the `cell_id` argument to the
+`plotCells` function. In that way, data contained in the `SpatialExperiment`
+object can be mapped to segmentation masks. For the current dataset, the cell
+IDs are stored in `colData(spe)$ObjectNumber`.
+
+As cell IDs are only unique within a single image, `plotCells` also requires
+the `img_id` argument. This argument specifies the `colData(spe)` as well as the
+`mcols(masks)` entry that stores the unique image name from which each cell was
+extracted. In the current dataset the unique image names are stored in
+`colData(spe)$sample_id` and `mcols(masks)$sample_id`.
+
+Providing these two entries that allow mapping between the `SpatialExperiment`
+object and segmentation masks, we can now color individual cells based on their
+cell type:
+
+```{r celltype}
+plotCells(cur_masks,
+          object = spe, 
+          cell_id = "ObjectNumber", img_id = "sample_id",
+          colour_by = "celltype")
+```
+
+For consistent visualization, the `plotCells` function takes a named list as
+`color` argument. The entry name must match the `colour_by` argument. 
+
+```{r setting-celltype-colors}
+plotCells(cur_masks,
+          object = spe, 
+          cell_id = "ObjectNumber", img_id = "sample_id",
+          colour_by = "celltype",
+          colour = list(celltype = metadata(spe)$color_vectors$celltype))
+```
+
+If only individual cell types should be visualized, the `SpatialExperiment`
+object can be subsetted (e.g., to only contain CD8+ T cells). In the following
+example CD8+ T cells are colored in red and all other cells that are not
+contained in the dataset are colored in white (as set by the `missing_color`
+argument).
+
+```{r selective-visualization}
+CD8 <- spe[,spe$celltype == "CD8"]
+
+plotCells(cur_masks,
+          object = CD8, 
+          cell_id = "ObjectNumber", img_id = "sample_id",
+          colour_by = "celltype",
+          colour = list(celltype = c(CD8 = "red")),
+          missing_colour = "white")
 ```
 
 # Spatial analysis
 
+## Spatial interaction graphs
+
+Many spatial analysis approaches either compare the observed versus expected
+number of cells around a given cell type (point process) or utilize interaction
+graphs (spatial object graphs) to estimate clustering or interaction frequencies
+between cell types.
+
+The [steinbock](https://bodenmillergroup.github.io/steinbock/latest/cli/measurement/) 
+framework allows the construction of these spatial graphs. During image 
+processing (see Section \@ref(image-processing)), we have constructed
+a spatial graph by expanding the individual cell masks by 4 pixels. 
+
+The `imcRtools` package further allows the *ad hoc* consctruction of spatial
+graphs directly using a `SpatialExperiment` or `SingleCellExperiment` object
+while considering the spatial location (centroids) of individual cells. The
+[buildSpatialGraph](https://bodenmillergroup.github.io/imcRtools/reference/buildSpatialGraph.html)
+function allows constructing spatial graphs by detecting the k-nearest neighbors
+in 2D (`knn`), by detecting all cells within a given distance to the center cell
+(`expansion`) and by Delaunay triangulation (`delaunay`).
+
+When constructing a knn graph, the number of neighbors (`k`) needs to be set and
+(optionally) the maximum distance to consider (`max_dist`) can be specified.
+When constructing a graph via expansion, the distance to expand (`threshold`)
+needs to be provided. For graphs constructed via Delaunay triangulation,
+the `max_dist` parameter can be set to avoid unusually large connections at the
+edge of the image.
+
+```{r build-spatial-graphs, message=FALSE}
+library(imcRtools)
+spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "knn", k = 20)
+spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "expansion", threshold = 20)
+spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "delaunay", max_dist = 50)
+```
+
+The spatial graphs are stored in `colPair(spe, name)` slots. These slots store
+`SelfHits` objects representing edge lists in which the first column indicates
+the index of the "from" cell and the second column the index of the "to" cell.
+Each edge list is newly constructed when subsetting the object.
+
+```{r show-colPairNames}
+colPairNames(spe)
+```
+
+Here, `colPair(spe, "neighborhood")` stores the spatial graph constructed by
+`steinbock`, `colPair(spe, "knn_interaction_graph")` stores the knn spatial
+graph, `colPair(spe, "expansion_interaction_graph")` stores the expansion graph
+and `colPair(spe, "delaunay_interaction_graph")` stores the graph constructed by
+Delaunay triangulation.
+
+## Spatial visualization {#spatial-viz}
+
+Section \@ref(image-visualization) highlights the use of the
+[cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html)
+package to visualize multichannel images and segmentation masks. Here, we
+introduce the
+[plotSpatial](https://bodenmillergroup.github.io/imcRtools/reference/plotSpatial.html)
+function of the [imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html) package to visualize the cells' centroids and
+cell-cell interactions as spatial graphs.
+
+In the following example, we select one image for visualization purposes. 
+Here, each dot (node) represents a cell and edges are drawn between cells
+in close physical proximity as detected by `steinbock` or the `buildSpatialGraph`
+function. Nodes are variably colored based on the cell type and edges are
+colored in grey.
+
+```{r spatial-viz-1, message=FALSE, fig.width=7, fig.height=7}
+library(ggplot2)
+library(viridis)
+
+# steinbock interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "neighborhood", 
+            nodes_first = FALSE, 
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("steinbock interaction graph")
+
+# knn interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "knn_interaction_graph", 
+            nodes_first = FALSE,
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("knn interaction graph")
+
+# expansion interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "expansion_interaction_graph", 
+            nodes_first = FALSE, 
+            directed = FALSE,
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("expansion interaction graph")
+
+# delaunay interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "delaunay_interaction_graph", 
+            nodes_first = FALSE,
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("delaunay interaction graph")
+```
+
+Finally, the `plotSpatial` function allows displaying all images at once. This
+visualization can be useful to quickly detect larger structures of interest.
+
+```{r spatial-viz-3, fig.height=12, fig.width=12}
+plotSpatial(spe, 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype)
+```
+
+## Cellular neighborhood analysis
+
+The following section highlights the use of the `imcRtools` package to detect
+cellular neighborhoods. This approach has been proposed by [@Goltsev2018] and
+[@Schurch2020] to group cells based on information contained in their direct
+neighborhood.
+
+[@Goltsev2018] perfomed Delaunay triangulation-based graph construction, 
+neighborhood aggregation and then clustered cells. [@Schurch2020] on the 
+other hand constructed a 10-nearest neighbor graph before aggregating
+information across neighboring cells. 
+
+In the following code chunk we will use the 20-nearest neighbor graph
+as constructed above to define the direct cellular neighborhood. The
+[aggregateNeighbors](https://bodenmillergroup.github.io/imcRtools/reference/aggregateNeighbors.html)
+function allows neighborhood aggregation in 2 different ways:
+
+1. For each cell the function computes the fraction of cells of a certain type
+(e.g., cell type) among its neighbors.
+2. For each cell it aggregates (e.g., mean) the expression counts across all
+neighboring cells.
+
+Based on these measures, cells can now be clustered into cellular neighborhoods.
+We will first compute the fraction of the different cell types among the
+20-nearest neighbors and use kmeans clustering to group cells into 10 cellular
+neighborhoods.
+
+```{r cn-analysis, fig.height=12, fig.width=12}
+# By celltypes
+spe <- aggregateNeighbors(spe, colPairName = "knn_interaction_graph", 
+                          aggregate_by = "metadata", count_by = "celltype")
+
+set.seed(220705)
+
+cn_1 <- kmeans(spe$aggregatedNeighbors, centers = 10)
+spe$cn_celltypes <- as.factor(cn_1$cluster)
+
+plotSpatial(spe, 
+            node_color_by = "cn_celltypes", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    scale_color_brewer(palette = "Set3")
+```
+
+The next code chunk visualizes the cell type compositions of the detected
+cellular neighborhoods (CN).
+
+```{r, message=FALSE}
+library(pheatmap)
+
+for_plot <- prop.table(table(spe$cn_celltypes, spe$celltype), margin = 1)
+
+pheatmap(for_plot, 
+         color = colorRampPalette(c("dark blue", "white", "dark red"))(100), 
+         scale = "column")
+```
+
+CN 10 and CN 1 are mainly composed of tumor cells with CN 10 forming the tumor/stroma border.
+CN 8 is mainly composed of B and BnT cells indicating TLS. CN 9 is composed 
+of aggregated plasma cells and CN 3 contains most T cells.
+
+## Patch detection
+
+The previous section focused on detecting cellular neighborhoods in a rather
+unsupervised fashion. However, the `imcRtools` package also provides methods for
+detecting spatial compartments in a supervised fashion. The
+[patchDetection](https://bodenmillergroup.github.io/imcRtools/reference/patchDetection.html)
+function allows the detection of connected sets of similar cells as proposed by
+[@Hoch2022]. In the following example, we will use the `patchDetection` function
+to detect function to detect tumor patches in three steps:
+
+1. Find connected sets of tumor cells (using the `steinbock` graph).  
+2. Components which contain less than 10 cells are excluded.  
+3. Expand the components by 1µm to construct a concave hull around the patch and
+include cells within the patch.
+
+```{r patchDetection-1, fig.height=12, fig.width=12}
+spe <- patchDetection(spe, 
+                      patch_cells = spe$celltype == "Tumor",
+                      img_id = "sample_id",
+                      expand_by = 1,
+                      min_patch_size = 10,
+                      colPairName = "neighborhood")
+
+plotSpatial(spe, 
+            node_color_by = "patch_id", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    theme(legend.position = "none") +
+    scale_color_manual(values = rev(colors()))
+```
+
+## Interaction analysis
+
+The next section focuses on statistically testing the pairwise interaction
+between all cell types of the dataset. For this, the `imcRtools` package
+provides the 
+[testInteractions](https://bodenmillergroup.github.io/imcRtools/reference/testInteractions.html) 
+function which implements the interaction testing strategy proposed by
+[@Shapiro2017]. 
+
+Per grouping level (e.g., image), the `testInteractions` function computes the 
+averaged cell type/cell type interaction count and computes this count against
+an empirical null distribution which is generated by permuting all cell labels (while maintaining the tissue structure).
+
+In the following example, we use the `steinbock` generated spatial interaction
+graph and estimate the interaction or avoidance between cell types in the
+dataset.
+
+```{r testInteractions-1, message=FALSE}
+out <- testInteractions(spe, 
+                        group_by = "sample_id",
+                        label = "celltype", 
+                        colPairName = "neighborhood", 
+                        iter = 200)
+
+head(out)
+```
+
+The returned `DataFrame` contains the test results per grouping level (in this case
+the image ID, `group_by`), "from" cell type (`from_label`) and "to" cell type
+(`to_label`). The `sigval` entry indicates if a pair of cell types is
+significantly interacting (`sigval = 1`), if a pair of cell types is
+significantly avoiding (`sigval = -1`) or if no significant interaction or
+avoidance was detected.
+
+These results can be visualized by computing the sum of the `sigval` entries
+across all images:
+
+```{r testInteractions-2, message=FALSE}
+library(scales)
+out %>% as_tibble() %>%
+    group_by(from_label, to_label) %>%
+    summarize(sum_sigval = sum(sigval, na.rm = TRUE)) %>%
+    ggplot() +
+        geom_tile(aes(from_label, to_label, fill = sum_sigval)) +
+        scale_fill_gradient2(low = muted("blue"), mid = "white", high = muted("red")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+In the plot above the red tiles indicate cell type pairs that were detected to 
+significantly interact on a large number of images. On the other hand, blue
+tiles show cell type pairs which tend to avoid each other on a large number 
+of images. 
+
+Here we can observe that tumor cells are mostly compartmentalized and are in
+avoidance with other cell types. As expected, B cells interact with BnT cells; 
+regulatory T cells interact with CD4+ T cells and CD8+ T cells. Most cell types
+show self interactions indicating spatial clustering. 
 
 # Further resources
 
