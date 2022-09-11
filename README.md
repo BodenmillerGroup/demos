@@ -8,6 +8,19 @@ Each demo is hosted in its independent branch.
 The most current demonstration is compiled as `index.html` in the `docs` folder and will automatically be hosted at [bodenmillergroup.github.io/demos](https://www.bodenmillergroup.github.io/demos)
 The following demos are gathered here:
 
+### EuroBioc2022 workshop presentation
+
+The workshop given at the [EuroBioc2022](https://eurobioc2022.bioconductor.org/) conference can be found [here](https://bodenmillergroup.github.io/demos/).
+It highlights the use of the [imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html) R/Bioconductor package for spatial data analysis and visualization.
+
+To follow along, please clone the repository
+
+```
+git clone https://github.com/BodenmillerGroup/demos.git
+```
+
+and open the `EuroBioc2022_workshop.Rmd` file.
+
 ### Bioc2022 workshop presentation
 
 The workshop given at the [Bioc2022](https://bioc2022.bioconductor.org/) conference can be found [here](https://github.com/BodenmillerGroup/demos/blob/Bioc2022/docs/Bioc2022_workshop.Rmd).
