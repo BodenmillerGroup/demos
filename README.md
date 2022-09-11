@@ -10,13 +10,13 @@ The following demos are gathered here:
 
 ### Bioc2022 workshop presentation
 
-The workshop given at the [Bioc2022](https://bioc2022.bioconductor.org/) conference can be found [here](https://www.bodenmillergroup.github.io/demos).
+The workshop given at the [Bioc2022](https://bioc2022.bioconductor.org/) conference can be found [here](https://github.com/BodenmillerGroup/demos/blob/Bioc2022/docs/Bioc2022_workshop.Rmd).
 It highlights the use of the [steinbock](https://github.com/BodenmillerGroup/steinbock) python framework and the [imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html) R/Bioconductor package.
 
 To follow along, please clone the repository
 
 ```
-git clone https://github.com/BodenmillerGroup/demos.git
+git clone --single-branch --branch Bioc2022 https://github.com/BodenmillerGroup/demos.git
 ```
 
 and open the `Bioc2022_workshop.Rmd` file.
