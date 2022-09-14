@@ -167,6 +167,19 @@ graph is stored in:
 colPair(spe, type = "neighborhood")
 ```
 
+We can also visualize all cells.
+
+```{r spatial-viz-3, fig.height=12, fig.width=12, message=FALSE}
+library(imcRtools)
+library(ggplot2)
+
+plotSpatial(spe, 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype)
+```
+
 # Spatial interaction graphs
 
 Many spatial analysis approaches either compare the observed versus expected
@@ -196,8 +209,6 @@ the `max_dist` parameter can be set to avoid unusually large connections at the
 edge of the image.
 
 ```{r build-spatial-graphs, message=FALSE}
-library(imcRtools)
-
 spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "knn", k = 20)
 spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "expansion", threshold = 20)
 spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "delaunay", max_dist = 50)
@@ -234,7 +245,6 @@ function. Nodes are variably colored based on the cell type and edges are
 colored in grey.
 
 ```{r spatial-viz-1, message=FALSE, fig.width=7, fig.height=7}
-library(ggplot2)
 library(viridis)
 
 # steinbock interaction graph 
@@ -281,17 +291,6 @@ plotSpatial(spe[,spe$sample_id == "Patient3_001"],
             edge_color_fix = "grey") + 
     scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
     ggtitle("delaunay interaction graph")
-```
-
-Finally, the `plotSpatial` function allows displaying all images at once. This
-visualization can be useful to quickly detect larger structures of interest.
-
-```{r spatial-viz-3, fig.height=12, fig.width=12}
-plotSpatial(spe, 
-            node_color_by = "celltype", 
-            img_id = "sample_id", 
-            node_size_fix = 0.5) + 
-    scale_color_manual(values = metadata(spe)$color_vectors$celltype)
 ```
 
 ## Spatial community analysis
@@ -478,14 +477,6 @@ spe <- detectSpatialContext(spe,
 # Define SC color scheme
 col_SC <- setNames(colorRampPalette(brewer.pal(9, "Paired"))(length(unique(spe$spatial_context))), 
                    sort(unique(spe$spatial_context)))
-
-# Visualize spatial contexts on images
-plotSpatial(spe, 
-            node_color_by = "spatial_context", 
-            img_id = "sample_id", 
-            node_size_fix = 0.5, 
-            colPairName = "knn_spatialcontext_graph") +
-    scale_color_manual(values = col_SC)
 ```
 
 We detect a total of `r length(unique(spe$spatial_context))` distinct
@@ -534,12 +525,6 @@ spe <- filterSpatialContext(spe,
                             group_by = "patient_id", 
                             group_threshold = 3,
                             cells_threshold = 100)
-plotSpatial(spe, 
-            node_color_by = "spatial_context_filtered", 
-            img_id = "sample_id", 
-            node_size_fix = 0.5, 
-            colPairName = "knn_spatialcontext_graph") +
-    scale_color_manual(values = col_SC, limits = force)
 ```
 
 Lastly, we can use the
