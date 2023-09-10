@@ -1,0 +1,306 @@
+---
+title: "EuroBioc2023 - cytomapper/cytoviewer: R/Bioconductor packages for visualization and exploration of highly multiplexed imaging data"
+date: "`r BiocStyle::doc_date()`"
+author:
+- name: Lasse Meyer 
+  affiliation: 
+  - Department for Quantitative Biomedicine, University of Zurich
+  - Institute for Molecular Health Sciences, ETH Zurich
+  email: lasse.meyer@dqbm.uzh.ch
+- name: Nils Eling
+  affiliation: 
+  - Department for Quantitative Biomedicine, University of Zurich
+  - Institute for Molecular Health Sciences, ETH Zurich
+- name: Bernd Bodenmiller
+  affiliation: 
+  - Department for Quantitative Biomedicine, University of Zurich
+  - Institute for Molecular Health Sciences, ETH Zurich
+output:
+    BiocStyle::html_document:
+        toc_float: yes
+        pandoc_args: [
+            "--output=index.html"
+            ]
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(dirname(inputFile),'/index.html')) })
+abstract: |
+    Highly multiplexed imaging allows simultaneous spatially and single-cell resolved detection of dozens of biological molecules (e.g. proteins) in their native tissue context. As a result, these technologies allow an in-depth analysis of complex systems and diseases such as cancer. Here, we showcase two related R/Bioconductor packages, cytomapper and cytoviewer, that contain user-friendly functions to visualize and explore the multiplexed read-outs and cell-level information obtained by highly multiplexed imaging data. Firstly, the cytomapper package allows visualization of multi-channel pixel-level information as well as display of single cell-level information on segmentation masks. In addition, it includes a Shiny application to enable hierarchical gating and visualization of selected cells. Secondly, the cytoviewer package builds on top of the cytomapper package and extends the static visualization strategies via an interactive Shiny application. The cytoviewer interface is divided into image-level and cell-level visualization. Users can overlay individual images with segmentation masks, visualize cell-specific metadata and download images. Both packages integrate well into the Bioconductor framework for single-cell and image analysis leveraging the image handling and analysis strategies from the EBImage Bioconductor package and building on commonly used classes such as SingleCellExperiment, SpatialExperiment and CytoImageList. Taken together, the Bioconductor packages cytomapper and cytoviewer provide a versatile and well-integrated toolbox for highly multiplexed imaging data visualization in R.
+vignette: |
+    %\VignetteIndexEntry{"cytomapper/cytoviewer: R/Bioconductor packages for visualization and exploration of highly multiplexed imaging data"}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+bibliography: library.bib
+---
+
+`r fontawesome::fa(name = "github", fill = "#333")` <a href="https://github.com/lassedochreden">\@lassedochreden</a>  
+
+`r fontawesome::fa(name = "github", fill = "#333")` <a href="https://github.com/nilseling">\@nilseling</a>  
+`r fontawesome::fa(name = "twitter", fill = "#1DA1F2")` <a href="https://twitter.com/NilsEling">\@NilsEling</a> 
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "~/Desktop/Github/demos/docs/")
+options(timeout=10000)
+```
+
+# Data and code availability
+
+To follow this tutorial, please visit
+[https://github.com/BodenmillerGroup/demos/tree/main/docs](https://github.com/BodenmillerGroup/demos/tree/main/docs).
+The compiled `.html` file of this workshop is hosted at:
+[https://bodenmillergroup.github.io/demos](https://bodenmillergroup.github.io/demos).
+
+We will need to install the following packages for the workshop:
+
+```{r installation, eval=FALSE}
+# 1. cytomapper 
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("cytomapper")
+
+# 2. cytoviewer
+if (!requireNamespace("remotes", quietly = TRUE))
+    install.packages("remotes")
+
+remotes::install_github("BodenmillerGroup/cytoviewer")
+```
+
+```{r installation complete, eval=FALSE}
+library(cytomapper)
+library(cytoviewer)
+```
+
+To reproduce the analysis, clone the repository:
+
+```
+git clone https://github.com/BodenmillerGroup/demos.git
+```
+
+and open the `EuroBioc2023_workshop.Rmd` file in the `docs` folder.
+
+
+# Introduction
+
+## Highly multiplexed imaging 
+
+Highly multiplexed imaging allows simultaneous spatially and single-cell
+resolved detection of dozens of biological molecules (e.g. proteins) in
+their native tissue context. As a result, these technologies allow an
+in-depth analysis of complex systems and diseases such as the tumor
+microenvironment [@Jackson2020] and type 1 diabetes progression
+[@Damond2019].
+
+Imaging-based spatial proteomics methods [@Moffitt2022] can be broadly
+divided into fluorescent cyclic approaches such as tissue-based cyclic
+immunofluorescence (t-CyCIF) [@Lin2018] and one-step mass-tag based
+approaches such as multiplexed ion beam imaging (MIBI) [@Angelo2014] and
+IMC [@Giesen2014].
+
+Across technologies, the acquired data are commonly stored as
+multi-channel images, where each pixel encodes the abundance of all acquired
+markers at a specific position in the tissue. Of note, the instructions below 
+will focus on the visualization and exploration of **IMC data** as an example. 
+However, data from other technologies such as t-CyCIF or MIBI, which produce 
+pixel-level intensities and (optionally) segmentation masks, can be 
+interactively visualized with `cytomapper` and `cytoviewer`.
+
+### Imaging mass cytometry
+
+IMC, an advancement of CyTOF, combines antibodies tagged with
+isotopically pure rare earth metals with laser ablation and
+mass-spectrometry-based detection to produce high-dimensional images
+[@Giesen2014]. It captures the spatial expression of over 40 proteins in
+parallel at a sub-cellular resolution of 1 μm. Thus, IMC is able to
+detect cytoplasmic and nuclear localization of proteins.
+
+## Highly multiplexed image analysis
+
+When performing end-to-end multiplexed image analysis, the user is
+often faced with a diverse set of computational tools and complex analysis
+scripts. The main analysis steps, irrespective of the biological question,
+include 1) Visual inspection of images for quality control, 2) Image
+pre-processing and segmentation and 3) Single-cell and spatial analysis.  
+
+We developed an interoperabale, modularized computational end-to-end workflow 
+[@Windhager2021] to process and analyze multiplexed imaging data **(Figure 1)**. 
+
+The *steinbock* framework facilitates multi-channel image processing including 
+raw data pre-processing, image segmentation and feature extraction. Data generated 
+by *steinbock* can be directly read by the *imcRtools* R/Bioconductor package for 
+data visualization and spatial analysis **(Figure 1)**. 
+
+The *cytomapper* package [@Eling2020] support image handling and composite as well as 
+segmentation mask visualization, while the newly developed *cytoviewer* package 
+[@Meyer2023] supports interactive and easy-to-use image visualization. 
+
+![**Figure 1: Overview of the multiplexed image processing and analysis workflow.** 
+Raw image data can be interactively visualized using *napari* plugins such as
+*napari-imc* for IMC, to assess data quality and for exploratory visualization.
+The *steinbock* framework performs image pre-processing, cell segmentation and
+single-cell data extraction using established approaches and standardized file
+formats. Data can be imported into R using the *imcRtools* package, which
+further supports spatial visualization and analysis. Storing the data in a
+*SingleCellExperiment* or *SpatialExperiment* object, *imcRtools* integrates
+with a variety of data analysis tools of the Bioconductor project such as
+*cytomapper* [@Eling2020] and *cytoviewer* [@Meyer2023]. Alternatively, 
+*steinbock* exports data to the *anndata* format for analysis in Python, e.g. 
+using *squidpy*.](imgs/Overview.png)
+
+
+## Workshop outline
+
+In this workshop, we showcase two related R/Bioconductor packages, 
+*cytomapper* [@Eling2020] and *cytoviewer* [@Meyer2023], that contain user-friendly 
+functions to visualize and explore the multiplexed read-outs and cell-level information 
+obtained by highly multiplexed imaging data. 
+
+Outline: 
+
+1. Download and exploration of example data
+2. cytomapper 
+3. cytoviewer 
+4. Future developments 
+
+The visualization approaches presented here were taken from the [IMC data analysis
+book](https://bodenmillergroup.github.io/IMCDataAnalysis/). The book provides much
+more detailed information most relevant IMC data analysis steps.
+
+
+# Download and exploration of example data
+
+## Download example dataset
+
+Here, we will use an example IMC cancer dataset to showcase the functionality of 
+`cytomapper` and `cytoviewer`. This
+dataset was generated as part of the Integrated iMMUnoprofiling of large
+adaptive CANcer patient cohort project ([immucan.eu](immucan.eu)) and
+includes IMC data for 4 cancer patients diagnosed with different tumor
+types (head and neck cancer, breast cancer, lung cancer and colorectal
+cancer). 
+
+The data input objects were processed with the [IMC data analysis
+workflow](https://bodenmillergroup.github.io/IMCDataAnalysis/) and can
+be downloaded from <https://zenodo.org/record/7079294>.
+
+```{r download}
+# Download
+download.file("https://zenodo.org/record/7647079/files/spe.rds",
+              destfile = "spe.rds")
+download.file("https://zenodo.org/record/7647079/files/images.rds",
+              destfile = "images.rds")
+download.file("https://zenodo.org/record/7647079/files/masks.rds",
+              destfile = "masks.rds")
+```
+
+## Read data into R
+
+### Images
+
+The image data was stored as a `CytoImageList` object containing the
+spillover corrected multi-channel images (n=14). Each image contains 40
+channels and each channel represents the pixel-intensities of one marker
+(proteins for IMC). The proteins for this dataset are immuno-oncology
+related targets including Ecad, CD8a and CD68, which mark tumor, CD8+ T
+cells and myeloid cells, respectively.
+
+```{r images}
+# Load images
+images <- readRDS("images.rds")
+images
+```
+
+### Segmentation masks
+
+The segmentation masks were again stored as a `CytoImageList` object containing
+one mask (n=14) for each image. Segmentation masks are defined as one-channel
+images containing integer values for cells and zero for background.
+
+```{r masks}
+# Load masks
+masks <- readRDS("masks.rds")
+masks
+```
+
+### Metadata object
+
+The metadata object was stored in `SpatialExperiment` format. Each column entry 
+represents a single-cell and each row entry represents a single marker. 
+We quantify protein abundance as the mean pixel intensity per marker and cell. 
+It also contained various metadata information in the `colData` slot generated
+during the analysis pipeline including patient-level information (such
+as indication) and cell-level information (such as cell type and cell
+area).
+
+```{r spe}
+# Load spe
+spe <- readRDS("spe.rds")
+spe
+```
+
+```{r colData}
+unique(spe$patient_id)
+unique(spe$sample_id)
+unique(spe$indication)
+unique(spe$celltype)
+
+counts(spe)[1:5,1:5]
+assay(spe, "exprs")[1:5,1:5]
+```
+
+
+# cytomapper 
+
+## Image-level visualization 
+
+## Cell-level visualization 
+
+## Adjusting plot annotations 
+
+## Further functionality
+
+# cytoviewer 
+
+## Data input variations 
+
+## Function call 
+
+## Application overview 
+
+# Future developments 
+
+# Further resources
+
+The [IMC data analysis book](https://bodenmillergroup.github.io/IMCDataAnalysis/)
+contains a detailed overview on the presented and other approaches for 
+multiplexed image analysis and visualization.
+
+The [steinbock](https://github.com/BodenmillerGroup/steinbock) framework 
+provides functionality for image processing.
+
+The [ImcSegmentationPipeline](https://github.com/BodenmillerGroup/ImcSegmentationPipeline)
+provides a GUI-based version of the segmentation pipeline based on Ilastik
+pixel classification and image segmentation via CellProfiler.
+
+The
+[imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html)
+package supports reading single-cell data from segmented images, multi-channel 
+spillover correction, and spatial data analysis.
+
+The [imcdatasets](https://bioconductor.org/packages/release/data/experiment/html/imcdatasets.html) R/Bioconductor package contains a number of publically available IMC datasets.
+
+
+# Acknowledgments
+
+Nils Eling, Nicolas Damond and Tobias Hoch developed the `cytomapper` package. 
+Lasse Meyer and Nils Eling developed the `cytoviewer` package. 
+
+We thank Prof. Bernd Bodenmiller for his continued support. 
+
+Nils Eling is funded by Marie Sklodowska Curie Actions.
+
+# Session info {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
+
+# References 
