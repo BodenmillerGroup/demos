@@ -1,16 +1,17 @@
 ---
-title: "EuroBioc2023 - cytomapper/cytoviewer: R/Bioconductor packages for visualization and exploration of highly multiplexed imaging data"
+title: "EuroBioc2023: cytomapper/cytoviewer: R/Bioconductor packages for visualization and exploration of highly multiplexed imaging data"
 date: "`r BiocStyle::doc_date()`"
 author:
 - name: Lasse Meyer 
   affiliation: 
   - Department for Quantitative Biomedicine, University of Zurich
   - Institute for Molecular Health Sciences, ETH Zurich
-  email: lasse.meyer@dqbm.uzh.ch
+  email: lasse.meyer@uzh.ch
 - name: Nils Eling
   affiliation: 
   - Department for Quantitative Biomedicine, University of Zurich
   - Institute for Molecular Health Sciences, ETH Zurich
+  email: nils.eling@uzh.ch
 - name: Bernd Bodenmiller
   affiliation: 
   - Department for Quantitative Biomedicine, University of Zurich
@@ -64,10 +65,11 @@ if (!requireNamespace("remotes", quietly = TRUE))
 remotes::install_github("BodenmillerGroup/cytoviewer")
 ```
 
-```{r installation complete, eval=FALSE}
+```{r installation complete, eval=FALSE, message=FALSE}
 library(cytomapper)
 library(cytoviewer)
 ```
+
 
 To reproduce the analysis, clone the repository:
 
@@ -76,6 +78,7 @@ git clone https://github.com/BodenmillerGroup/demos.git
 ```
 
 and open the `EuroBioc2023_workshop.Rmd` file in the `docs` folder.
+
 
 
 # Introduction
@@ -145,7 +148,6 @@ with a variety of data analysis tools of the Bioconductor project such as
 *steinbock* exports data to the *anndata* format for analysis in Python, e.g. 
 using *squidpy*.](imgs/Overview.png)
 
-
 ## Workshop outline
 
 In this workshop, we showcase two related R/Bioconductor packages, 
@@ -162,7 +164,8 @@ Outline:
 
 The visualization approaches presented here were taken from the [IMC data analysis
 book](https://bodenmillergroup.github.io/IMCDataAnalysis/). The book provides much
-more detailed information most relevant IMC data analysis steps.
+more detailed information on most relevant IMC data analysis steps.
+
 
 
 # Download and exploration of example data
@@ -177,11 +180,11 @@ includes IMC data for 4 cancer patients diagnosed with different tumor
 types (head and neck cancer, breast cancer, lung cancer and colorectal
 cancer). 
 
-The data input objects were processed with the [IMC data analysis
-workflow](https://bodenmillergroup.github.io/IMCDataAnalysis/) and can
+The data input objects were processed as outlined in the [IMC data analysis
+book](https://bodenmillergroup.github.io/IMCDataAnalysis/) and can
 be downloaded from <https://zenodo.org/record/7079294>.
 
-```{r download}
+```{r download, message=FALSE}
 # Download
 download.file("https://zenodo.org/record/7647079/files/spe.rds",
               destfile = "spe.rds")
@@ -207,6 +210,12 @@ cells and myeloid cells, respectively.
 images <- readRDS("images.rds")
 images
 ```
+The `elementMetadata` slot of the `CytoImageList` object stores sample and 
+patient ID as well as indication information. 
+
+```{r metadata}
+mcols(images)
+```
 
 ### Segmentation masks
 
@@ -220,15 +229,18 @@ masks <- readRDS("masks.rds")
 masks
 ```
 
+It is crucial that the order of the images in both `CytoImageList` objects is the same. 
+
+```{r check-order}
+# Check image order 
+all.equal(names(images), names(masks))
+```
+
 ### Metadata object
 
 The metadata object was stored in `SpatialExperiment` format. Each column entry 
 represents a single-cell and each row entry represents a single marker. 
 We quantify protein abundance as the mean pixel intensity per marker and cell. 
-It also contained various metadata information in the `colData` slot generated
-during the analysis pipeline including patient-level information (such
-as indication) and cell-level information (such as cell type and cell
-area).
 
 ```{r spe}
 # Load spe
@@ -236,36 +248,471 @@ spe <- readRDS("spe.rds")
 spe
 ```
 
+It also contained various metadata information in the `colData` slot generated
+during the analysis pipeline including patient-level information (such
+as indication) and cell-level information (such as cell type and cell
+area).
+
 ```{r colData}
+# Explore colData
 unique(spe$patient_id)
 unique(spe$sample_id)
 unique(spe$indication)
 unique(spe$celltype)
-
-counts(spe)[1:5,1:5]
-assay(spe, "exprs")[1:5,1:5]
+range(spe$area)
 ```
+
 
 
 # cytomapper 
 
+The
+[cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html)
+R/Bioconductor package was developed to support the handling and visualization
+of multiple multi-channel images and segmentation masks [@Eling2020]. The main
+data object for image handling is the
+[CytoImageList](https://www.bioconductor.org/packages/release/bioc/vignettes/cytomapper/inst/doc/cytomapper.html#5_The_CytoImageList_object)
+container to store multi-channel
+images and segmentation masks.  
+
+We will randomly select 3 images for visualization purposes.
+
+```{r select-images}
+# Load package 
+library(cytomapper)
+
+# Sample images
+set.seed(220517)
+cur_id <- sample(unique(spe$sample_id), 3)
+
+cur_spe <- spe[,spe$sample_id %in% cur_id]
+cur_images <- images[names(images) %in% cur_id]
+cur_masks <- masks[names(masks) %in% cur_id]
+```
+
 ## Image-level visualization 
+
+The following section gives examples for visualizing individual channels or 
+multiple channels as pseudo-color composite images. For this the `cytomapper`
+package exports the `plotPixels` function which expects a `CytoImageList` object
+storing one or multiple multi-channel images. In the simplest use case, a 
+single channel can be visualized as follows:
+
+```{r single-channel}
+plotPixels(cur_images, 
+           colour_by = "Ecad",
+           bcg = list(Ecad = c(0, 5, 1)))
+```
+
+The plot above shows the tissue expression of the epithelial tumor marker
+E-cadherin on the 3 selected images. The `bcg` parameter (default `c(0, 1, 1)`)
+stands for "background", "contrast", "gamma" and controls these attributes of
+the image. This parameter takes a named list where each entry specifies these
+attributes per channel. The first value of the numeric vector will be added to
+the pixel intensities (background); pixel intensities will be multiplied by the
+second entry of the vector (contrast); pixel intensities will be exponentiated
+by the third entry of the vector (gamma). In most cases, it is sufficient to
+adjust the second (contrast) entry of the vector.
+
+The following example highlights the visualization of 6 markers (maximum allowed
+number of markers) at once per image. The markers indicate the spatial
+distribution of tumor cells (E-cadherin), T cells (CD3), B cells (CD20), CD8+ T
+cells (CD8a), plasma cells (CD38) and proliferating cells (Ki67).
+
+```{r 6-channel}
+plotPixels(cur_images, 
+           colour_by = c("Ecad", "CD3", "CD20", "CD8a", "CD38", "Ki67"),
+           bcg = list(Ecad = c(0, 5, 1),
+                      CD3 = c(0, 5, 1),
+                      CD20 = c(0, 5, 1),
+                      CD8a = c(0, 5, 1),
+                      CD38 = c(0, 8, 1),
+                      Ki67 = c(0, 5, 1)))
+```
+
+### Adjusting colors
+
+The default colors for visualization are chosen by the additive RGB (red, green,
+blue) color model. For six markers the default colors are: red, green, blue,
+cyan (green + blue), magenta (red + blue), yellow (green + red). These colors
+are the easiest to distinguish by eye. However, you can select other colors for
+each channel by setting the `colour` parameter:
+
+```{r setting-colors}
+plotPixels(cur_images, 
+           colour_by = c("Ecad", "CD3", "CD20"),
+           bcg = list(Ecad = c(0, 5, 1),
+                      CD3 = c(0, 5, 1),
+                      CD20 = c(0, 5, 1)),
+           colour = list(Ecad = c("black", "burlywood1"),
+                         CD3 = c("black", "cyan2"),
+                         CD20 = c("black", "firebrick1")))
+```
+
+The `colour` parameter takes a named list in which each entry specifies the
+colors from which a color gradient is constructed via `colorRampPalette`. These
+are usually vectors of length 2 in which the first entry is `"black"` and the
+second entry specifies the color of choice.
+
+### Image normalization
+
+As an alternative to setting the `bcg` parameter, images can first be
+normalized. Normalization here means to scale the pixel intensities per channel
+between 0 and 1 (or a range specified by the `ft` parameter in the `normalize`
+function). By default, the `normalize` function scales pixel intensities across
+**all** images contained in the `CytoImageList` object (`separateImages = FALSE`).
+Each individual channel is scaled independently (`separateChannels = TRUE`).
+
+After 0-1 normalization, maximum pixel intensities can be clipped to enhance the
+contrast of the image (setting the `inputRange` parameter). In the following
+example, the clipping to 0 and 0.2 is the same as multiplying the pixel
+intensities by a factor of 5.
+
+```{r default-normalization}
+# 0 - 1 channel scaling across all images
+norm_images <- cytomapper::normalize(cur_images)
+
+# Clip channel at 0.2
+norm_images <- cytomapper::normalize(norm_images, inputRange = c(0, 0.2))
+
+plotPixels(norm_images, 
+           colour_by = c("Ecad", "CD3", "CD20", "CD8a", "CD38", "Ki67"))
+```
+
+The default setting of scaling pixel intensities across all images ensures 
+comparable intensity levels across images. Note that, pixel intensities can also be 
+scaled **per image** therefore correcting for staining/expression differences
+between images. 
+
+### Outlining cells on images 
+
+The following section highlights the combined visualization of pixel- and
+cell-level information at once. For this, besides the `SpatialExperiment` object,
+the `plotPixels` function accepts two `CytoImageList` objects. One for the
+multi-channel images and one for the segmentation masks. By specifying the
+`outline_by` parameter, the outlines of cells can now be colored based on their
+metadata.
+
+The following example first generates a 3-channel composite images displaying
+the expression of E-cadherin, CD3 and CD20 before coloring the cells' outlines
+by their cell phenotype.
+
+```{r outlining-all-cells}
+plotPixels(image = cur_images,
+           mask = cur_masks,
+           object = cur_spe, 
+           cell_id = "ObjectNumber", 
+           img_id = "sample_id",
+           colour_by = c("Ecad", "CD3", "CD20"),
+           outline_by = "celltype",
+           bcg = list(Ecad = c(0, 5, 1),
+                      CD3 = c(0, 5, 1),
+                      CD20 = c(0, 5, 1)),
+           colour = list(celltype = metadata(cur_spe)$color_vectors$celltype),
+           thick = TRUE)
+```
+
+Distinguishing individual cell phenotypes is nearly impossible in the images
+above.
+
+However, the `SpatialExperiment` object can be subsetted to only contain cells
+of a single or few phenotypes. This allows the selective visualization of cell
+outlines on composite images.
+
+Here, we select all CD8+ T cells from the dataset and outline them on a 2-channel
+composite image displaying the expression of CD3 and CD8a. 
+
+```{r outlining-CD8}
+CD8 <- cur_spe[,cur_spe$celltype == "CD8"]
+
+plotPixels(image = cur_images,
+           mask = cur_masks,
+           object = CD8, 
+           cell_id = "ObjectNumber", img_id = "sample_id",
+           colour_by = c("CD3", "CD8a"),
+           outline_by = "celltype",
+           bcg = list(CD3 = c(0, 5, 1),
+                      CD8a = c(0, 5, 1)),
+           colour = list(celltype = c("CD8" = "white")),
+           thick = TRUE)
+```
+
+This type of visualization allows the quality control of two things: 1.
+segmentation quality of individual cell types can be checked and 2. cell
+phenotyping accuracy can be visually assessed against expected marker expression.
 
 ## Cell-level visualization 
 
-## Adjusting plot annotations 
+In the following section, we will show examples on how to visualize single
+cells either as segmentation masks or outlined on composite images. This type
+of visualization allows to observe the spatial distribution of cell phenotypes,
+the visual assessment of morphological features and quality control in terms
+of cell segmentation and phenotyping.
+
+### Visualizing metadata
+
+The `cytomapper` package provides the `plotCells` function that accepts a
+`CytoImageList` object containing segmentation masks. These are defined as
+single channel images where sets of pixels with the same integer ID identify
+individual cells. This integer ID can be found as an entry in the `colData(spe)`
+slot and as pixel information in the segmentation masks. The entry in
+`colData(spe)` needs to be specified via the `cell_id` argument to the
+`plotCells` function. In that way, data contained in the `SpatialExperiment`
+object can be mapped to segmentation masks. For the current dataset, the cell
+IDs are stored in `colData(spe)$ObjectNumber`.
+
+As cell IDs are only unique within a single image, `plotCells` also requires
+the `img_id` argument. This argument specifies the `colData(spe)` as well as the
+`mcols(masks)` entry that stores the unique image name from which each cell was
+extracted. In the current dataset the unique image names are stored in
+`colData(spe)$sample_id` and `mcols(masks)$sample_id`.
+
+Providing these two entries that allow mapping between the `SpatialExperiment`
+object and segmentation masks, we can now color individual cells based on their
+cell type:
+
+```{r celltype}
+plotCells(cur_masks,
+          object = cur_spe, 
+          cell_id = "ObjectNumber", 
+          img_id = "sample_id",
+          colour_by = "celltype")
+```
+
+For consistent visualization, the `plotCells` function takes a named list as
+`color` argument. The entry name must match the `colour_by` argument. 
+
+```{r setting-celltype-colors}
+plotCells(cur_masks,
+          object = cur_spe, 
+          cell_id = "ObjectNumber", 
+          img_id = "sample_id",
+          colour_by = "celltype",
+          colour = list(celltype = metadata(cur_spe)$color_vectors$celltype))
+```
+
+If only individual cell types should be visualized, the `SpatialExperiment`
+object can be subsetted (e.g., to only contain CD8+ T cells). In the following
+example CD8+ T cells are colored in red and all other cells that are not
+contained in the dataset are colored in white (as set by the `missing_color`
+argument).
+
+```{r selective-visualization}
+CD8 <- cur_spe[,cur_spe$celltype == "CD8"]
+
+plotCells(cur_masks,
+          object = CD8, 
+          cell_id = "ObjectNumber", 
+          img_id = "sample_id",
+          colour_by = "celltype",
+          colour = list(celltype = c(CD8 = "red")),
+          missing_colour = "white")
+```
+
+In terms of visualizing metadata, any entry in the `colData(spe)` slot can be 
+visualized. The `plotCells` function automatically detects if the entry 
+is continuous or discrete. In this fashion, we can now visualize the area of each 
+cell:
+
+```{r area}
+plotCells(cur_masks,
+          object = cur_spe, 
+          cell_id = "ObjectNumber", 
+          img_id = "sample_id",
+          colour_by = "area")
+```
 
 ## Further functionality
 
-# cytoviewer 
+The `cytomapper` package also includes a `shiny` application to gate cells based on their mean
+pixel intensity with additional visualization on the images. The idea behind this gating strategy 
+is to generate ground truth cell type labels, which can be used to train a classifier and classify cells rather than 
+relying on clustering as performed recently [@Hoch2022].
 
-## Data input variations 
+The shiny app can be opened using the `cytomapper::cytomapperShiny` function. 
 
-## Function call 
+
+
+# cytoviewer
+
+This section introduces the [cytoviewer](https://www.bioconductor.org/packages/release/bioc/html/cytoviewer.html)
+R/Bioconductor package [@Meyer2023] for interactive
+multi-channel image visualization. The `cytoviewer` package builds on 
+top of the `r Biocpkg("cytomapper")`Bioconductor package and extends the 
+static visualization strategies provided by `cytomapper` via an 
+**interactive Shiny application**.
+
+The graphical user interface of `cytoviewer` allows intuitive navigation and little 
+coding experience is required to use the package. 
+
+## Application overview
+
+The `cytoviewer` interface is broadly divided into
+**Image-level** (Composite and Channels) and
+**Cell-level** (Masks) visualization (As seen above). It allows users to
+overlay individual images with segmentation masks, integrates well with
+`SingleCellExperiment` and `SpatialExperiment` objects for metadata
+visualization and supports rapid `Image downloads`.
+
+### Data input format
+
+The `cytoviewer` package combines objects of
+`r Biocpkg("SingleCellExperiment")`, `r Biocpkg("SpatialExperiment")`
+and `cytomapper::CytoImageList` classes (from `r Biocpkg("cytomapper")`)
+to visualize image- and cell-level information.
+
+The `cytoviewer` function call takes up to **five arguments**:
+
+Firstly, `image` refers to a `CytoImageList` object containing one or
+multiple multi-channel images where each channel represents the
+pixel-intensities of one marker (proteins in IMC).
+
+Secondly, `mask` refers to a `CytoImageList` object containing one or
+multiple segmentation masks. Segmentation masks are defined as
+one-channel images containing integer values, which represent the cell
+ids or background.
+
+Thirdly, the `object` entry refers to a `SingleCellExperiment` or
+`SpatialExperiment` class object that contains cell-specific metadata in
+the `colData` slot.
+
+Lastly, to match information between the `CytoImageList` objects and the
+`SingleCellExperiment`/`SpatialExperiment` object, two additional spots
+can be specified:
+
+-   `img_id`: a single character indicating the `colData` (of the
+    `SingleCellExperiment`/`SpatialExperiment` object) and
+    `elementMetadata` (of the `CytoImageList` object) entry that
+    contains the image identifiers. These image ids have to match
+    between the `SingleCellExperiment`/ `SpatialExperiment` object and
+    the `CytoImageList` objects.
+
+-   `cell_id`: a single character indicating the `colData` entry that
+    contains the cell identifiers. These should be integer values
+    corresponding to pixel-values in the segmentation masks.
+
+### Data input variations
+
+The functionality of `cytoviewer` depends on which input objects are
+user-provided. Below we describe the **four use cases** in respect to
+input objects and functionality.  
+
+**1. Usage of cytoviewer with images, masks and object**
+
+The *full* functionality of cytoviewer can be leveraged when `image`,
+`mask` and `object` are provided, which is the main intended use case.
+
+This allows [image-level](#ImageLevel) visualization (Composite and
+Channels), [cell-level](#CellLevel) visualization, overlaying images
+with segmentation masks as well as metadata visualization.  
+
+**2. Usage of cytoviewer with images only**
+
+If only the `image` object is specified, [image-level](#ImageLevel)
+visualization (Composite and Channels) is possible.  
+
+**3. Usage of cytoviewer with images and masks**
+
+[Image-level](#ImageLevel) visualization (Composite and Channels),
+overlaying of images with segmentation masks and
+[cell-level](#CellLevel) visualization is feasible when `image` and
+`mask` objects are provided.  
+
+**4. Usage of cytoviewer with masks and object**
+
+If `mask` and `object` are specified, [cell-level](#CellLevel)
+visualization as well as metadata visualization is possible.
+
+## Function call
+
+Here as an example, we will call `cytoviewer` with the `image`, `mask` and
+`object` data from the `cytomapper` section to leverage all provided functionality.
+
+This setting allows image-level visualization (Composite
+and Channels), cell-level visualization, overlaying images
+with segmentation masks as well as metadata visualization.
+
+For further details, please refer to the `?cytoviewer` manual or the
+`Help page` within the shiny application.
+
+```{r cytoviewer, message=FALSE, error=FALSE}
+library(cytoviewer)
+
+# Use cytoviewer with images, masks and object
+app <- cytoviewer(image = cur_images, 
+                  mask = cur_masks, 
+                  object = cur_spe, 
+                  img_id = "sample_id", 
+                  cell_id = "ObjectNumber")
+
+if (interactive()) {
+  
+  shiny::runApp(app)
+
+  }
+```
 
 ## Application overview 
 
+## Image-level visualization
+
+Image visualization control is split into *basic* and *advanced controls*.
+
+*Basic controls* supports the selection of up to six markers/channels
+for `image` display. Each marker has color control settings that allow
+the user to set contrast, brightness, gamma and select a channel color.
+
+In the *advanced controls* part, the user can choose to overlay the
+displayed images with provided segmentation `masks`. Outline color and
+mask thickness can be adjusted by the user. Moreover, the masks can be
+outlined by cell-specific metadata provided in `colData` slot of the
+`object`.
+
+Of note, for categorical and continuous metadata entries the user can
+choose between discrete colors and continuous color palettes (viridis,
+inferno, plasma), respectively.
+
+## Cell-level visualization
+
+Cell visualization has *basic controls*.
+
+Here, the user can choose to display the provided segmentation `masks`.
+If an `object` is provided, the masks can be colored by cell-specific
+metadata.
+
+Please note again that for categorical and continuous metadata entries
+the user can choose between discrete colors and continuous color
+palettes (viridis, inferno, plasma), respectively.
+
+## General controls
+
+General controls is subdivided into an *Image appearance* and 
+*Image filters* part.
+
+In the *Image appearance* section, the user can adjust the scale bar
+length and include legend/image titles, while the *Image filters*
+section allows to control pixel-wise interpolation (default) and apply a
+Gaussian filter.
+
+## Image download
+
+The `cytoviewer` package supports fast and uncomplicated image
+downloads. Download controls are part of the **Header**. 
+
+The user can specify a file name, select the image of interest
+(Composite, Channels, Mask) and the file format (pdf, png). Upon
+clicking the download button, a pop-window should appear where the user
+can specify the download location.
+
+
+
 # Future developments 
+
+Future developments of both packages include an integration with modern imaging 
+file types such as `OME-NGFF` and `spatialData` to enable image and single-cell 
+analysis in a programming language agnostic fashion.
+
+
 
 # Further resources
 
@@ -288,6 +735,7 @@ spillover correction, and spatial data analysis.
 The [imcdatasets](https://bioconductor.org/packages/release/data/experiment/html/imcdatasets.html) R/Bioconductor package contains a number of publically available IMC datasets.
 
 
+
 # Acknowledgments
 
 Nils Eling, Nicolas Damond and Tobias Hoch developed the `cytomapper` package. 
@@ -297,10 +745,14 @@ We thank Prof. Bernd Bodenmiller for his continued support.
 
 Nils Eling is funded by Marie Sklodowska Curie Actions.
 
-# Session info {.unnumbered}
+
+
+# Session Info {.unnumbered}
 
 ```{r sessionInfo, echo=FALSE}
 sessionInfo()
 ```
+
+
 
 # References 
