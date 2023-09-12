@@ -60,17 +60,10 @@ and open the `EuroBioc2023_workshop.Rmd` file in the `docs` folder.
 We will need to install the following packages for the workshop:
 
 ```{r installation, eval=FALSE}
-# 1. cytomapper 
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install("cytomapper")
-
-# 2. cytoviewer
-if (!requireNamespace("remotes", quietly = TRUE))
-    install.packages("remotes")
-
-remotes::install_github("BodenmillerGroup/cytoviewer")
+BiocManager::install("cytomapper", "cytoviewer")
 ```
 
 ```{r installation complete, eval=FALSE, message=FALSE}
