@@ -116,7 +116,7 @@ detect cytoplasmic and nuclear localization of proteins.
 
 ## Highly multiplexed image analysis
 
-When performing end-to-end multiplexed image analysis, the user is
+When performing multiplexed image analysis, the user is
 often faced with a diverse set of computational tools and complex analysis
 scripts. The main analysis steps, irrespective of the biological question,
 include 1) Visual inspection of images for quality control, 2) Image
@@ -130,9 +130,9 @@ raw data pre-processing, image segmentation and feature extraction. Data generat
 by *steinbock* can be directly read by the *imcRtools* R/Bioconductor package for 
 data visualization and spatial analysis **(Figure 1)**. 
 
-The *cytomapper* package [@Eling2020] support image handling and composite as well as 
+The *cytomapper* package [@Eling2020] supports image handling and composite as well as 
 segmentation mask visualization, while the newly developed *cytoviewer* package 
-[@Meyer2023] supports interactive and easy-to-use image visualization. Both packages 
+[@Meyer2023] allows interactive and easy-to-use image visualization. Both packages 
 integrate into the Bioconductor framework [@Gentleman2004] for single-cell and image analysis 
 leveraging the image handling and analysis strategies from the *EBImage* Bioconductor 
 package [@Pau2010] and building on commonly used Bioconductor classes such as 
@@ -166,7 +166,7 @@ obtained by highly multiplexed imaging data.
 
 Outline: 
 
-1. Download and exploration of example data
+1. Download and exploration of example IMC data
 2. cytomapper 
 3. cytoviewer 
 4. Future developments 
@@ -501,15 +501,6 @@ plotCells(cur_masks,
           colour_by = "area")
 ```
 
-## Further functionality
-
-The `cytomapper` package also includes a `shiny` application to gate cells based on their mean
-pixel intensity with additional visualization on the images. The idea behind this gating strategy 
-is to generate ground truth cell type labels, which can be used to train a classifier and classify cells rather than 
-relying on clustering as performed recently [@Hoch2022].
-
-The shiny app can be opened using the `cytomapper::cytomapperShiny` function. 
-
 
 
 # cytoviewer
@@ -717,10 +708,12 @@ can specify the download location.
 
 # Future developments 
 
-Future developments of both packages include an integration with modern imaging 
+1. Future developments of both packages include an integration with modern imaging 
 file types such as `OME-NGFF` and `spatialData` to enable image and single-cell 
-analysis in a programming language agnostic fashion.
+analysis in a programming language agnostic fashion.  
 
+2. We further envision to integrate interactive visualization of spatial cell graphs 
+into `cytoviewer` ("Points-level").
 
 
 # Further resources
