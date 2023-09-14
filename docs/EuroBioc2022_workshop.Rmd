@@ -1,0 +1,772 @@
+---
+title: "EuroBioc2022: Single-cell based spatial analysis and visualization of highly multiplexed imaging data"
+date: "`r BiocStyle::doc_date()`"
+author:
+- name: Nils Eling 
+  affiliation: 
+  - Department for Quantitative Biomedicine, University of Zurich
+  - Institute for Molecular Health Sciences, ETH Zurich
+  email: nils.eling@dqbm.uzh.ch
+- name: Jonas Windhager
+  affiliation: 
+  - Department for Quantitative Biomedicine, University of Zurich
+  - Institute for Molecular Health Sciences, ETH Zurich
+- name: Bernd Bodenmiller
+  affiliation: 
+  - Department for Quantitative Biomedicine, University of Zurich
+  - Institute for Molecular Health Sciences, ETH Zurich
+output:
+    BiocStyle::html_document:
+        toc_float: yes
+        pandoc_args: [
+            "--output=index.html"
+            ]
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(dirname(inputFile),'/index.html')) })
+abstract: |
+    Highly multiplexed imaging similarly to FISH-based spatial transcriptomics allows the detection of dozens of biomolecules in single cells across tissue sections. Upon image processing and segmentation, the protein/RNA expression as well as the location and morphological features of individual cells are extracted for downstream analysis. We developed the steinbock framework to support image pre-processing, segmentation, feature extraction, and data export in a reproducible fashion. Single-cell, spatial data analysis and visualization are facilitated by the R/Bioconductor packages imcRtools and cytomapper. The imcRtools package allows the construction of spatial object graphs in which nodes represent cells and edges indicate cells in close physical proximity. The package further supports the visualization of these graphs together with the location of cells across multiple images. Spatial cellular neighborhoods can be detected by aggregating the phenotypes or expression across neighboring cells and using this information for cell clustering. A supervised spatial clustering approach is provided by detecting fully connected cells of the same phenotype prior to polygon expansion. The imcRtools package allows testing for enriched cell type/cell type interactions or avoidance by permuting cell labels per image. Finally, the cytomapper package allows the visualization of detected cell types or spatial communities directly on segmentation mask together with protein/marker expression. Together, the tools described here specifically support the spatial analysis and visualization of single-cell data. By using standardized data classes, the packages integrate into single-cell analysis workflows within the Bioconductor framework.
+vignette: |
+    %\VignetteIndexEntry{"Single-cell based spatial analysis and visualization of highly multiplexed imaging data"}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+bibliography: lib.bib
+---
+
+`r fontawesome::fa(name = "github", fill = "#333")` <a href="https://github.com/nilseling">\@nilseling</a>  
+`r fontawesome::fa(name = "twitter", fill = "#1DA1F2")` <a href="https://twitter.com/NilsEling">\@NilsEling</a> 
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "~/Github/demos/docs/")
+options(timeout=10000)
+```
+
+# Data and code availability
+
+To follow this tutorial, please visit
+[https://github.com/BodenmillerGroup/demos/tree/main/docs](https://github.com/BodenmillerGroup/demos/tree/main/docs).
+The compiled `.html` file of this workshop is hosted at:
+[https://bodenmillergroup.github.io/demos](https://bodenmillergroup.github.io/demos).
+
+We will need to install the following packages for the workshop:
+
+```{r installation, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("imcRtools", "tidyverse", "patchwork",
+                       "ggplot2", "viridis", "pheatmap", "scales")))
+```
+
+To reproduce the analysis, clone the repository:
+
+```
+git clone https://github.com/BodenmillerGroup/demos.git
+```
+
+and open the `EuroBioc2022_workshop.Rmd` file in the `docs` folder.
+
+# Introduction
+
+Highly multiplexed imaging enables the simultaneous detection of tens of
+biological molecules (e.g. proteins, RNA; also referred to as "markers") in
+their spatial tissue context. Recently established multiplexed imaging
+technologies rely on cyclic staining with immunofluorescently-tagged antibodies
+[@Lin2018; @Gut2018], or the use of oligonucleotide-tagged [@Saka2019;
+@Goltsev2018] or metal-tagged antibodies [@Giesen2014; @Angelo2014], among
+others. Across technologies, the acquired data are commonly stored as
+multi-channel images, where each pixel encodes the abundance of all acquired
+markers at a specific position in the tissue. After data acquisition, bioimage
+processing and segmentation are conducted to extract data for downstream
+analysis. When performing end-to-end multiplexed image analysis, the user is
+often faced with a diverse set of computational tools and complex analysis
+scripts. We developed an interoperabale, modularized computational workflow to process
+and analyze multiplexed imaging data (Figure 1). The *steinbock* framework
+facilitates multi-channel image processing including raw data pre-processing,
+image segmentation and feature extraction. Data generated by *steinbock* can be
+directly read by the *imcRtools* R/Bioconductor package for data visualization and
+spatial analysis (Figure 1). The *cytomapper* package support image handling
+and composite as well as segmentation mask visualization.
+
+![**Figure 1: Overview of the multiplexed image processing and analysis workflow.** Raw
+image data can be interactively visualized using *napari* plugins such as
+*napari-imc* for IMC, to assess data quality and for exploratory visualization.
+The *steinbock* framework performs image pre-processing, cell segmentation and
+single-cell data extraction using established approaches and standardized file
+formats. Data can be imported into R using the *imcRtools* package, which
+further supports spatial visualization and analysis. Storing the data in a
+*SingleCellExperiment* or *SpatialExperiment* object, *imcRtools* integrates
+with a variety of data analysis tools of the Bioconductor project such as
+*cytomapper* [@Eling2020]. Alternatively, *steinbock* exports data to the
+*anndata* format for analysis in Python, e.g. using *squidpy*.](imgs/Overview.png)
+
+The workshop focuses on the spatial analysis of single-cell data obtained from
+multiplexed imaging technologies. While the concepts presented here can be
+applied in a technology-agnostic way, for demonstration purposes, we present
+data from Imaging Mass Cytometry (IMC), which relies on tissue staining with
+metal-labelled antibodies to jointly measure the spatial distribution of up to
+40 proteins or RNA at 1μm resolution [@Giesen2014; @Schulz2018].
+
+The workshop highlights the following analysis steps using the
+[imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html)
+R/Bioconductor package:
+
+1. Construction and visualization of spatial object graphs
+2. Cellular neighborhood detection
+3. Spatial context detection
+4. Patch detection 
+5. Cell type/cell type interaction analysis
+
+The analysis approaches presented here were taken from the [IMC data analysis
+book](https://bodenmillergroup.github.io/IMCDataAnalysis/). The book provides
+more detailed information on the technical underpinnings of the analysis.
+
+More information can also be found in our [preprint](https://www.biorxiv.org/content/10.1101/2021.11.12.468357v1.full)
+
+# Download example data
+
+To highlight spatial data analysis approaches, we provide example
+data that were acquired as part of the **I**ntegrated i**MMU**noprofiling of
+large adaptive **CAN**cer patient cohorts projects
+([immucan.eu](https://immucan.eu/)). The spatially annotated, single-cell data
+can be obtained via:
+
+```{r download-processed, message=FALSE}
+download.file("https://zenodo.org/record/6810879/files/spe.rds",
+              "../data/spe.rds")
+
+(spe <- readRDS("../data/spe.rds"))
+```
+
+This `SpatialExperiment` object contains single-cell data from 4 patients and 14
+IMC images. Each column entry represents a single-cell and each row entry
+represents a single marker. We quantify protein abundance as the mean pixel
+intensity per marker and cell. These abundance measures are stored in the
+`counts` assay and their asinh-transformed values are stored in the `exprs`
+assay.
+
+```{r colData}
+unique(spe$patient_id)
+unique(spe$sample_id)
+unique(spe$indication)
+unique(spe$celltype)
+
+counts(spe)[1:5,1:5]
+assay(spe, "exprs")[1:5,1:5]
+```
+
+The spatial location of each cell is stored in the `spatialCoords` slot.
+
+```{r spatialCoords}
+head(spatialCoords(spe))
+```
+
+During image processing, the `steinbock` framework extracts _spatial object graphs_
+indicating cells in close physical proximity in form of an edgelist. This interaction
+graph is stored in:
+ 
+```{r colPairs}
+colPair(spe, type = "neighborhood")
+```
+
+We can also visualize all cells.
+
+```{r spatial-viz-3, fig.height=12, fig.width=12, message=FALSE}
+library(imcRtools)
+library(ggplot2)
+
+plotSpatial(spe, 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype)
+```
+
+# Spatial interaction graphs
+
+Many spatial analysis approaches either compare the observed versus expected
+number of cells around a given cell type (point process) or utilize interaction
+graphs (spatial object graphs) to estimate clustering or interaction frequencies
+between cell types.
+
+The
+[steinbock](https://bodenmillergroup.github.io/steinbock/latest/cli/measurement/)
+framework allows the construction of these spatial graphs. During image
+processing, we have constructed a spatial graph by expanding the individual cell
+masks by 4 pixels.
+
+The `imcRtools` package further allows the *ad hoc* construction of spatial
+graphs directly using a `SpatialExperiment` or `SingleCellExperiment` object
+while considering the spatial location (centroids) of individual cells. The
+[buildSpatialGraph](https://bodenmillergroup.github.io/imcRtools/reference/buildSpatialGraph.html)
+function allows constructing spatial graphs by detecting the k-nearest neighbors
+in 2D (`knn`), by detecting all cells within a given distance to the center cell
+(`expansion`) and by Delaunay triangulation (`delaunay`).
+
+When constructing a knn graph, the number of neighbors (`k`) needs to be set and
+(optionally) the maximum distance to consider (`max_dist`) can be specified.
+When constructing a graph via expansion, the distance to expand (`threshold`)
+needs to be provided. For graphs constructed via Delaunay triangulation,
+the `max_dist` parameter can be set to avoid unusually large connections at the
+edge of the image.
+
+```{r build-spatial-graphs, message=FALSE}
+spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "knn", k = 20)
+spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "expansion", threshold = 20)
+spe <- buildSpatialGraph(spe, img_id = "sample_id", type = "delaunay", max_dist = 50)
+```
+
+The spatial graphs are stored in `colPair(spe, name)` slots. These slots store
+`SelfHits` objects representing edge lists in which the first column indicates
+the index of the "from" cell and the second column the index of the "to" cell.
+Each edge list is newly constructed when subsetting the object.
+
+```{r show-colPairNames}
+colPairNames(spe)
+```
+
+Here, `colPair(spe, "neighborhood")` stores the spatial graph constructed by
+`steinbock`, `colPair(spe, "knn_interaction_graph")` stores the knn spatial
+graph, `colPair(spe, "expansion_interaction_graph")` stores the expansion graph
+and `colPair(spe, "delaunay_interaction_graph")` stores the graph constructed by
+Delaunay triangulation.
+
+# Spatial visualization {#spatial-viz}
+
+Here, we introduce the
+[plotSpatial](https://bodenmillergroup.github.io/imcRtools/reference/plotSpatial.html)
+function of the
+[imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html)
+package to visualize the cells' centroids and cell-cell interactions as spatial
+graphs.
+
+In the following example, we select one image for visualization purposes. 
+Here, each dot (node) represents a cell and edges are drawn between cells
+in close physical proximity as detected by `steinbock` or the `buildSpatialGraph`
+function. Nodes are variably colored based on the cell type and edges are
+colored in grey.
+
+```{r spatial-viz-1, message=FALSE, fig.width=7, fig.height=7}
+library(viridis)
+
+# steinbock interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "neighborhood", 
+            nodes_first = FALSE, 
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("steinbock interaction graph")
+
+# knn interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "knn_interaction_graph", 
+            nodes_first = FALSE,
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("knn interaction graph")
+
+# expansion interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "expansion_interaction_graph", 
+            nodes_first = FALSE, 
+            directed = FALSE,
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("expansion interaction graph")
+
+# delaunay interaction graph 
+plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "celltype", 
+            img_id = "sample_id", 
+            draw_edges = TRUE, 
+            colPairName = "delaunay_interaction_graph", 
+            nodes_first = FALSE,
+            edge_color_fix = "grey") + 
+    scale_color_manual(values = metadata(spe)$color_vectors$celltype) +
+    ggtitle("delaunay interaction graph")
+```
+
+## Spatial community analysis
+
+The detection of spatial communities was proposed by [@Jackson2020]. Here,
+cells are clustered solely based on their interactions as defined by the
+spatial object graph. In the following example, we perform spatial community 
+detection separately for tumor and stromal cells.
+
+The general procedure is as follows:    
+1. subset the object to contain either tumor or stromal cells      
+2. create an `igraph` object from the edge list stored in 
+`colPair(tumor_spe, "neighborhood")`  
+3. perform community detection using the Louvain algorithm      
+4. store the community IDs in a vector and replace all communities with a size 
+smaller than 10 by `NA`    
+
+Both tumor and stromal spatial communities are stored in the `colData` of
+the `SpatialExperiment` object.
+
+```{r spatial-community, message=FALSE}
+library(igraph)
+set.seed(220819)
+
+# Spatial community detection - tumor
+tumor_spe <- spe[,spe$celltype == "Tumor"]
+gr <- graph_from_data_frame(as.data.frame(colPair(tumor_spe, "neighborhood")), 
+                            directed = FALSE, 
+                            vertices = data.frame(index = seq_len(ncol(tumor_spe))))
+cl_comm <- cluster_louvain(gr)
+comm_tumor <- paste0("Tumor_", membership(cl_comm))
+comm_tumor[membership(cl_comm) %in% which(sizes(cl_comm) < 10)] <- NA
+names(comm_tumor) <- colnames(tumor_spe)
+
+# Spatial community detection - non-tumor
+stroma_spe <- spe[,spe$celltype != "Tumor"]
+gr <- graph_from_data_frame(as.data.frame(colPair(stroma_spe, "neighborhood")), 
+                            directed = FALSE, 
+                            vertices = data.frame(index = seq_len(ncol(stroma_spe))))
+cl_comm <- cluster_louvain(gr)
+comm_stroma <- paste0("Stroma_", membership(cl_comm))
+comm_stroma[membership(cl_comm) %in% which(sizes(cl_comm) < 10)] <- NA
+names(comm_stroma) <- colnames(stroma_spe)
+comm <- c(comm_tumor, comm_stroma)
+spe$spatial_community <- comm[colnames(spe)]
+```
+
+We can now separately visualize the tumor and stromal communities.
+
+```{r spatial-community-viz, fig.height=12, fig.width=12}
+plotSpatial(spe[,spe$celltype == "Tumor"], 
+            node_color_by = "spatial_community", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    theme(legend.position = "none") +
+    ggtitle("Spatial tumor communities") +
+    scale_color_manual(values = rev(colors()))
+
+plotSpatial(spe[,spe$celltype != "Tumor"], 
+            node_color_by = "spatial_community", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    theme(legend.position = "none") +
+    ggtitle("Spatial non-tumor communities") +
+    scale_color_manual(values = rev(colors()))
+```
+
+# Cellular neighborhood analysis
+
+The following section highlights the use of the `imcRtools` package to detect
+cellular neighborhoods. This approach has been proposed by [@Goltsev2018] and
+[@Schurch2020] to group cells based on information contained in their direct
+neighborhood.
+
+[@Goltsev2018] perfomed Delaunay triangulation-based graph construction, 
+neighborhood aggregation and then clustered cells. [@Schurch2020] on the 
+other hand constructed a 10-nearest neighbor graph before aggregating
+information across neighboring cells. 
+
+In the following code chunk we will use the 20-nearest neighbor graph
+as constructed above to define the direct cellular neighborhood. The
+[aggregateNeighbors](https://bodenmillergroup.github.io/imcRtools/reference/aggregateNeighbors.html)
+function allows neighborhood aggregation in 2 different ways:
+
+1. For each cell the function computes the fraction of cells of a certain type
+(e.g., cell type) among its neighbors.
+2. For each cell it aggregates (e.g., mean) the expression counts across all
+neighboring cells.
+
+Based on these measures, cells can now be clustered into cellular neighborhoods.
+We will first compute the fraction of the different cell types among the
+20-nearest neighbors and use kmeans clustering to group cells into 6 cellular
+neighborhoods.
+
+```{r cn-analysis, fig.height=12, fig.width=12}
+# By celltypes
+spe <- aggregateNeighbors(spe, colPairName = "knn_interaction_graph", 
+                          aggregate_by = "metadata", count_by = "celltype")
+
+set.seed(220705)
+
+cn_1 <- kmeans(spe$aggregatedNeighbors, centers = 6)
+spe$cn_celltypes <- as.factor(cn_1$cluster)
+
+plotSpatial(spe, 
+            node_color_by = "cn_celltypes", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    scale_color_brewer(palette = "Set3")
+```
+
+The next code chunk visualizes the cell type compositions of the detected
+cellular neighborhoods (CN).
+
+```{r, message=FALSE}
+library(pheatmap)
+
+for_plot <- prop.table(table(spe$cn_celltypes, spe$celltype), margin = 1)
+
+pheatmap(for_plot, 
+         color = colorRampPalette(c("dark blue", "white", "dark red"))(100), 
+         scale = "column")
+```
+
+CN 1 and CN 5 are mainly composed of tumor cells with CN 5 forming the
+tumor/stroma border. CN 3 is mainly composed of B and BnT cells
+indicating TLS. CN 4 is composed of aggregated plasma cells and most T
+cells.
+
+# Spatial context detection
+
+Downstream of CN assignments, we will analyze the spatial context (SC)
+of each cell using three functions from `imcRtools`.
+
+While CNs can represent sites of unique local processes, the term SC was
+coined by Bhate and colleagues [@Bhate2022] and describes tissue regions
+in which distinct CNs may be interacting. Hence, SCs may be interesting
+regions of specialized biological events.
+
+Here, we will first detect SCs using the
+[detectSpatialContext](https://bodenmillergroup.github.io/imcRtools/reference/detectSpatialContext.html)
+function. This function relies on CN fractions for each cell in a spatial
+interaction graph (originally a KNN graph), which we will calculate using
+`buildSpatialGraph` and `aggregateNeighbors`. We will focus on the CNs derived
+from cell type fractions but other CN assignments are possible.
+
+**Of note**, the window size (k for KNN) for `buildSpatialGraph` should
+reflect a length scale on which biological signals can be exchanged and
+depends, among others, on cell density and tissue area. In view of their
+divergent functionality, we recommend to use a larger window size for SC
+(interaction between local processes) than for CN (local processes)
+detection. Since we used a 20-nearest neighbor graph for CN assignment,
+we will use a 40-nearest neighbor graph for SC detection. 
+
+Subsequently, the CN fractions are sorted from high-to-low and the SC of
+each cell is assigned as the minimal combination of SCs that additively
+surpass a user-defined threshold. The default threshold of 0.9 aims to
+represent the dominant CNs, hence the most prevalent signals, in a given
+window.
+
+For more details and biological validation, please refer to
+[@Bhate2022].
+
+```{r detectSpatialContext, fig.height=12, fig.width=15, message=FALSE}
+library(circlize)
+library(RColorBrewer)
+
+# Generate k-nearest neighbor graph for SC detection (k=40) 
+spe <- buildSpatialGraph(spe, img_id = "sample_id", 
+                         type = "knn", 
+                         name = "knn_spatialcontext_graph", 
+                         k = 40)
+# Aggregate based on clustered_neighbors
+spe <- aggregateNeighbors(spe, 
+                          colPairName = "knn_spatialcontext_graph",
+                          aggregate_by = "metadata",
+                          count_by = "cn_celltypes",
+                          name = "aggregatedNeighborhood")
+# Detect spatial contexts
+spe <- detectSpatialContext(spe, 
+                            entry = "aggregatedNeighborhood",
+                            threshold = 0.90,
+                            name = "spatial_context")
+# Define SC color scheme
+col_SC <- setNames(colorRampPalette(brewer.pal(9, "Paired"))(length(unique(spe$spatial_context))), 
+                   sort(unique(spe$spatial_context)))
+```
+
+We detect a total of `r length(unique(spe$spatial_context))` distinct
+SCs across this dataset.
+
+For ease of interpretation, we will directly compare the CN and SC
+assignments for `Patient3_001`.
+
+```{r compare cn sc, fig.height=5, fig.width=10}
+library(patchwork)
+
+# Compare CN and SC for one patient 
+p1 <- plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "cn_celltypes", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5, 
+            colPairName = "knn_interaction_graph") +
+    scale_color_brewer(palette = "Set3")
+
+p2 <- plotSpatial(spe[,spe$sample_id == "Patient3_001"], 
+            node_color_by = "spatial_context", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5, 
+            colPairName = "knn_spatialcontext_graph") +
+    scale_color_manual(values = col_SC, limits = force)
+
+p1 + p2
+```
+
+As expected, we can observe that interfaces between different CNs make
+up distinct SCs. For instance, interface between CN 3 (TLS region
+consisting of B and BnT cells) and CN 4 (Plasma- and T-cell dominated)
+turns to SC 3_4. On the other hand, the core of CN 3 becomes SC 3, since
+for the neighborhood for these cells is just the cellular neighborhood
+itself.
+
+Next, we filter the SCs based on user-defined thresholds for number of
+group entries (here at least 3 patients) and/or total number of cells
+(here minimum of 100 cells) per SC with 
+[filterSpatialContext](https://bodenmillergroup.github.io/imcRtools/reference/filterSpatialContext.html).
+
+```{r filterSpatialContext, fig.height=12, fig.width=13}
+# By number of group entries and total number of cells
+spe <- filterSpatialContext(spe, 
+                            entry = "spatial_context",
+                            group_by = "patient_id", 
+                            group_threshold = 3,
+                            cells_threshold = 100)
+```
+
+Lastly, we can use the
+[plotSpatialContext](https://bodenmillergroup.github.io/imcRtools/reference/plotSpatialContext.html)
+function to generate *SC graphs*, analogous to *CN combination maps* in
+[@Bhate2022]. Returned objects are `ggplot` objects, which can be easily
+modified further. We will create a SC graph for the filtered SCs here.
+
+```{r plotSpatialContext}
+# Colored by name and size by n_cells
+plotSpatialContext(spe, 
+                   entry = "spatial_context_filtered",
+                   group_by = "sample_id",
+                   node_color_by = "name",
+                   node_size_by = "n_cells",
+                   node_label_color_by = "name")
+
+# Colored by n_cells and size by n_group                   
+plotSpatialContext(spe, 
+                   entry = "spatial_context_filtered",
+                   group_by = "sample_id",
+                   node_color_by = "n_cells",
+                   node_size_by = "n_group",
+                   node_label_color_by = "n_cells") +
+  scale_color_viridis()
+```
+
+SC 1 (Tumor-dominated), SC 1_5 (Tumor and Tumor-Stroma interface) and SC
+2_4 (Plasma/T cell and Myeloid/Neutrophil interface) are the most
+frequent SCs in this dataset. Moreover, we may compare the degree of the
+different nodes in the SC graph. For example, we can observe that SC 1
+has only one degree (directed to SC 1_5), while SC 5 (Tumor-Stroma) has
+a much higher degree (n = 5) and potentially more interaction.
+
+# Patch detection
+
+The previous section focused on detecting cellular neighborhoods in a rather
+unsupervised fashion. However, the `imcRtools` package also provides methods for
+detecting spatial compartments in a supervised fashion. The
+[patchDetection](https://bodenmillergroup.github.io/imcRtools/reference/patchDetection.html)
+function allows the detection of connected sets of similar cells as proposed by
+[@Hoch2022]. In the following example, we will use the `patchDetection` function
+to detect tumor patches in three steps:
+
+1. Find connected sets of tumor cells (using the `steinbock` graph).  
+2. Components which contain less than 10 cells are excluded.  
+3. Expand the components by 1µm to construct a concave hull around the patch and
+include cells within the patch.
+
+```{r patchDetection-1, fig.height=12, fig.width=12}
+spe <- patchDetection(spe, 
+                      patch_cells = spe$celltype == "Tumor",
+                      img_id = "sample_id",
+                      expand_by = 1,
+                      min_patch_size = 10,
+                      colPairName = "neighborhood")
+
+plotSpatial(spe, 
+            node_color_by = "patch_id", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    theme(legend.position = "none") +
+    scale_color_manual(values = rev(colors()))
+```
+
+We can now measure the size of each patch using the
+[patchSize](https://bodenmillergroup.github.io/imcRtools/reference/patchSize.html)
+function and visualize tumor patch distribution per patient.
+
+```{r patch-size}
+patch_size <- patchSize(spe, "patch_id")
+
+patch_size <- merge(patch_size, 
+                    colData(spe)[match(patch_size$patch_id, spe$patch_id),], 
+                    by = "patch_id")
+
+ggplot(as.data.frame(patch_size)) + 
+    geom_boxplot(aes(patient_id, log10(size))) +
+    geom_point(aes(patient_id, log10(size)))
+```
+
+The
+[minDistToCells](https://bodenmillergroup.github.io/imcRtools/reference/minDistToCells.html)
+function can be used to calculate the minimum distance between each cell and a
+cell set of interest. Here, we highlight its use to calculate the minimum
+distance of all cells to the detected tumor patches. Negative values indicate
+the minimum distance of each tumor patch cell to a non-tumor patch cell.
+
+```{r dist, fig.height=12, fig.width=12}
+spe <- minDistToCells(spe, 
+                      x_cells = !is.na(spe$patch_id), 
+                      img_id = "sample_id")
+
+plotSpatial(spe, 
+            node_color_by = "distToCells", 
+            img_id = "sample_id", 
+            node_size_fix = 0.5) +
+    scale_color_gradient2(low = "dark blue", mid = "white", high = "dark red")
+```
+
+We can now observe th minimum distances to tumor patches in a cell type specific
+manner.
+
+```{r, message=FALSE}
+library(ggridges)
+ggplot(as.data.frame(colData(spe))) + 
+    geom_density_ridges(aes(distToCells, celltype, fill = celltype)) +
+    geom_vline(xintercept = 0, color = "dark red", size = 2) +
+    scale_fill_manual(values = metadata(spe)$color_vectors$celltype)
+```
+
+# Interaction analysis
+
+The next section focuses on statistically testing the pairwise interaction
+between all cell types of the dataset. For this, the `imcRtools` package
+provides the 
+[testInteractions](https://bodenmillergroup.github.io/imcRtools/reference/testInteractions.html) 
+function which implements the interaction testing strategy proposed by
+[@Shapiro2017]. 
+
+Per grouping level (e.g., image), the `testInteractions` function computes the
+averaged cell type/cell type interaction count and compares this count against
+an empirical null distribution which is generated by permuting all cell labels
+(while maintaining the tissue structure).
+
+In the following example, we use the `steinbock` generated spatial interaction
+graph and estimate the interaction or avoidance between cell types in the
+dataset.
+
+```{r testInteractions-1, message=FALSE}
+out <- testInteractions(spe, 
+                        group_by = "sample_id",
+                        label = "celltype", 
+                        colPairName = "neighborhood", 
+                        iter = 200)
+
+head(out)
+```
+
+The returned `DataFrame` contains the test results per grouping level (in this case
+the image ID, `group_by`), "from" cell type (`from_label`) and "to" cell type
+(`to_label`). The `sigval` entry indicates if a pair of cell types is
+significantly interacting (`sigval = 1`), if a pair of cell types is
+significantly avoiding (`sigval = -1`) or if no significant interaction or
+avoidance was detected.
+
+These results can be visualized by computing the sum of the `sigval` entries
+across all images:
+
+```{r testInteractions-2, message=FALSE}
+library(tidyverse)
+library(scales)
+out %>% as_tibble() %>%
+    group_by(from_label, to_label) %>%
+    summarize(sum_sigval = sum(sigval, na.rm = TRUE)) %>%
+    ggplot() +
+        geom_tile(aes(from_label, to_label, fill = sum_sigval)) +
+        scale_fill_gradient2(low = muted("blue"), mid = "white", high = muted("red")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+In the plot above the red tiles indicate cell type pairs that were detected to 
+significantly interact on a large number of images. On the other hand, blue
+tiles show cell type pairs which tend to avoid each other on a large number 
+of images. 
+
+Here we can observe that tumor cells are mostly compartmentalized and are in
+avoidance with other cell types. As expected, B cells interact with BnT cells; 
+regulatory T cells interact with CD4+ T cells and CD8+ T cells. Most cell types
+show self interactions indicating spatial clustering. 
+
+The `imcRtools` package further implements an interaction testing strategy
+proposed by [@Schulz2018] where the hypothesis is tested if at least n cells of
+a certain type are located around a target cell type (`from_cell`). This type of
+testing can be performed by selecting `method = "patch"` and specifying the
+number of patch cells via the `patch_size` parameter.
+
+```{r testInteractions-3, message=FALSE}
+out <- testInteractions(spe, 
+                        group_by = "sample_id",
+                        label = "celltype", 
+                        colPairName = "neighborhood",
+                        method = "patch", 
+                        patch_size = 3,
+                        iter = 200)
+
+out %>% as_tibble() %>%
+    group_by(from_label, to_label) %>%
+    summarize(sum_sigval = sum(sigval, na.rm = TRUE)) %>%
+    ggplot() +
+        geom_tile(aes(from_label, to_label, fill = sum_sigval)) +
+        scale_fill_gradient2(low = muted("blue"), mid = "white", high = muted("red")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+These results are comparable to the interaction testing presented above. The
+main difference comes from the lack of symmetry. We can now for example see that
+3 or more myeloid cells sit around CD4$^+$ T cells while this interaction is not
+as strong when considering CD4$^+$ T cells sitting around myeloid cells.
+
+# Further resources
+
+The [IMC data analysis book](https://bodenmillergroup.github.io/IMCDataAnalysis/)
+contains a detailed overview on the presented and other approaches for 
+multiplexed image analysis and visualization.
+
+The [steinbock](https://github.com/BodenmillerGroup/steinbock) framework 
+provides functionality for image processing.
+
+The [ImcSegmentationPipeline](https://github.com/BodenmillerGroup/ImcSegmentationPipeline)
+provides a GUI-based version of the segmentation pipeline based on Ilastik
+pixel classification and image segmentation via CellProfiler.
+
+The
+[cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html)
+package allows handling and visualization of multi-channel images and
+segmentation masks directly in R.
+
+The
+[imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html)
+package supports reading single-cell data from segmented images, multi-channel 
+spillover correction, and spatial data analysis.
+
+The [imcdatasets](https://bioconductor.org/packages/release/data/experiment/html/imcdatasets.html) R/Bioconductor package contains a number of publically available IMC datasets.
+
+For a full overview on the presented approaches, please refer to the preprint:
+
+[Jonas Windhager, Bernd Bodenmiller, Nils Eling. An end-to-end workflow for multiplexed image processing and analysis. bioRxiv, 2021](https://www.biorxiv.org/content/10.1101/2021.11.12.468357v1.full)
+
+# Acknowledgments
+
+Jonas Windhager developed the `steinbock` framework. Vito Zanotelli developed
+the IMC segmentation pipeline. Daniel Schulz, Tobias Hoch, Lasse Meyer, Jana
+Fischer, and Vito Zanotelli provided code for the `imcRtools`
+package. 
+
+Nils Eling is funded by Marie Sklodowska Curie Actions.
+
+# Session info {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
+
+# References {.unnumbered}
