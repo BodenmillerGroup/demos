@@ -23,16 +23,16 @@ and open the `EuroBioc2023_workshop.Rmd` file.
 
 ### EuroBioc2022 workshop presentation
 
-The workshop given at the [EuroBioc2022](https://eurobioc2022.bioconductor.org/) conference can be found [here](https://bodenmillergroup.github.io/demos/).
+The workshop given at the [EuroBioc2022](https://eurobioc2022.bioconductor.org/) conference can be found [here](https://github.com/BodenmillerGroup/demos/blob/EuroBioc2022/docs/EuroBioc2022_workshop.Rmd).
 It highlights the use of the [imcRtools](https://www.bioconductor.org/packages/release/bioc/html/imcRtools.html) R/Bioconductor package for spatial data analysis and visualization.
 
 To follow along, please clone the repository
 
 ```
-git clone https://github.com/BodenmillerGroup/demos.git
+git clone --single-branch --branch EuroBioc2022 https://github.com/BodenmillerGroup/demos.git
 ```
 
-and open the `EuroBioc2022_workshop.Rmd` file.
+and open the `EuroBioc2022_workshop.Rmd` file under `docs`.
 
 ### Bioc2022 workshop presentation
 
@@ -45,7 +45,7 @@ To follow along, please clone the repository
 git clone --single-branch --branch Bioc2022 https://github.com/BodenmillerGroup/demos.git
 ```
 
-and open the `Bioc2022_workshop.Rmd` file.
+and open the `Bioc2022_workshop.Rmd` file under `docs`.
 
 ### Bioc2021 workshop presentation
 
