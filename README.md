@@ -8,6 +8,19 @@ Each demo is hosted in its independent branch.
 The most current demonstration is compiled as `index.html` in the `docs` folder and will automatically be hosted at [bodenmillergroup.github.io/demos](https://www.bodenmillergroup.github.io/demos)
 The following demos are gathered here:
 
+### EuroBioc2023 workshop presentation
+
+The workshop given at the [EuroBioc2023](https://eurobioc2023.bioconductor.org/) conference can be found [here](https://bodenmillergroup.github.io/demos/).
+It highlights the use of the [cytoviewer](https://www.bioconductor.org/packages/release/bioc/html/cytoviewer.html) and [cytomapper](https://www.bioconductor.org/packages/release/bioc/html/cytomapper.html) R/Bioconductor packages for multiplexed image data visualization in R.
+
+To follow along, please clone the repository
+
+```
+git clone https://github.com/BodenmillerGroup/demos.git
+```
+
+and open the `EuroBioc2023_workshop.Rmd` file.
+
 ### EuroBioc2022 workshop presentation
 
 The workshop given at the [EuroBioc2022](https://eurobioc2022.bioconductor.org/) conference can be found [here](https://bodenmillergroup.github.io/demos/).
@@ -53,3 +66,8 @@ Please follow the [analysis script](https://github.com/BodenmillerGroup/demos/bl
 ## Maintainer
 
 [Nils Eling](https://github.com/nilseling)
+
+## Contributor
+
+[Lasse Meyer](https://github.com/lassedochreden)
+
